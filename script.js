@@ -3,8 +3,9 @@ const ROWS = 5;
 const COLS = 4;
 let zones = []; 
 let currentStep = 1;
+let isProcessing = false;
 
-// Initialize Grid
+// Initialize Grid UI
 const gridEl = document.getElementById('grid');
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
@@ -19,169 +20,202 @@ function onOpenCvReady() {
     document.getElementById('processBtn').disabled = false;
 }
 
-// UI Handlers
+// Elements
 const videoInput = document.getElementById('videoInput');
 const videoPlayer = document.getElementById('videoPlayer');
-const debugCheckbox = document.getElementById('showDebug');
-const videoContainer = document.getElementById('videoContainer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+
+// Sliders
+const sliderTop = document.getElementById('marginTop');
+const sliderBottom = document.getElementById('marginBottom');
+const sliderSide = document.getElementById('marginSide');
+
+[sliderTop, sliderBottom, sliderSide].forEach(s => {
+    s.addEventListener('input', drawGridOverlay);
+});
 
 videoInput.addEventListener('change', (e) => {
     if(e.target.files[0]) {
-        videoPlayer.src = URL.createObjectURL(e.target.files[0]);
-        document.getElementById('status').innerText = "Video Loaded.";
+        const url = URL.createObjectURL(e.target.files[0]);
+        videoPlayer.src = url;
+        
+        // Wait for video load to draw initial grid
+        videoPlayer.onloadedmetadata = () => {
+             overlayCanvas.width = videoPlayer.videoWidth;
+             overlayCanvas.height = videoPlayer.videoHeight;
+             procCanvas.width = videoPlayer.videoWidth;
+             procCanvas.height = videoPlayer.videoHeight;
+             drawGridOverlay();
+             document.getElementById('status').innerText = "Adjust lines, then Click Start.";
+        };
     }
 });
 
-debugCheckbox.addEventListener('change', (e) => {
-    videoContainer.classList.toggle('show', e.target.checked);
-});
+function getDimensions() {
+    const w = videoPlayer.videoWidth;
+    const h = videoPlayer.videoHeight;
+    
+    // Convert slider 0-100 values to percentages
+    const topPct = parseInt(sliderTop.value) / 100;
+    const botPct = parseInt(sliderBottom.value) / 100;
+    const sidePct = parseInt(sliderSide.value) / 100;
+
+    const startX = w * sidePct;
+    const endX = w * (1 - sidePct);
+    const startY = h * topPct;
+    const endY = h * (1 - botPct);
+    
+    return { w, h, startX, endX, startY, endY };
+}
+
+function drawGridOverlay() {
+    if(isProcessing || !videoPlayer.videoWidth) return;
+
+    const d = getDimensions();
+    overlayCtx.clearRect(0, 0, d.w, d.h);
+    
+    const boxW = (d.endX - d.startX) / COLS;
+    const boxH = (d.endY - d.startY) / ROWS;
+
+    overlayCtx.strokeStyle = "#00ff00"; // Green Lines
+    overlayCtx.lineWidth = 3;
+    overlayCtx.beginPath();
+
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            let x = d.startX + (c * boxW);
+            let y = d.startY + (r * boxH);
+            overlayCtx.rect(x, y, boxW, boxH);
+        }
+    }
+    overlayCtx.stroke();
+}
 
 document.getElementById('processBtn').addEventListener('click', startAnalysis);
 
 async function startAnalysis() {
     if(!cvReady) return;
+    isProcessing = true;
     
-    // Reset Grid
-    document.querySelectorAll('.cell').forEach(c => {
-        c.className = 'cell';
-        c.innerText = '';
-    });
-    currentStep = 1;
+    // Lock UI
+    document.getElementById('processBtn').disabled = true;
+    
+    // Calculate final zones based on slider positions
     zones = [];
-
-    const procCanvas = document.getElementById('procCanvas');
-    const ctx = procCanvas.getContext('2d', {willReadFrequently: true});
-    const debugCanvas = document.getElementById('debugCanvas');
-    const debugCtx = debugCanvas.getContext('2d');
-
-    // Wait for metadata
-    if(videoPlayer.readyState < 1) {
-        await new Promise(r => videoPlayer.addEventListener('loadedmetadata', r, {once:true}));
-    }
-
-    const w = videoPlayer.videoWidth;
-    const h = videoPlayer.videoHeight;
-    procCanvas.width = w; procCanvas.height = h;
-    debugCanvas.width = w; debugCanvas.height = h;
-
-    // --- DEFINE ZONES (The "Focus Areas") ---
-    // Adjust these margins if the grid doesn't align
-    const marginX = w * 0.05; // 5% left/right margin
-    const marginY = h * 0.15; // 15% top margin (skips header)
-    const gridW = w - (marginX * 2);
-    const gridH = h * 0.70;   // Uses 70% of screen height
-    
-    const cellW = gridW / COLS;
-    const cellH = gridH / ROWS;
+    const d = getDimensions();
+    const boxW = (d.endX - d.startX) / COLS;
+    const boxH = (d.endY - d.startY) / ROWS;
 
     for(let r=0; r<ROWS; r++) {
         for(let c=0; c<COLS; c++) {
             zones.push({
                 id: (r*COLS) + c,
-                x: Math.floor(marginX + (c * cellW)),
-                y: Math.floor(marginY + (r * cellH)),
-                w: Math.floor(cellW),
-                h: Math.floor(cellH),
-                locked: false // Ensure we only detect once
+                x: Math.floor(d.startX + (c * boxW) + (boxW * 0.1)), // Add 10% padding inside cell
+                y: Math.floor(d.startY + (r * boxH) + (boxH * 0.1)),
+                w: Math.floor(boxW * 0.8), // Only check inner 80% to avoid borders
+                h: Math.floor(boxH * 0.8),
+                locked: false
             });
         }
     }
 
-    // Processing vars
+    // OpenCV setup
     let cap = new cv.VideoCapture(videoPlayer);
-    let frame = new cv.Mat(h, w, cv.CV_8UC4);
+    let frame = new cv.Mat(d.h, d.w, cv.CV_8UC4);
     let gray = new cv.Mat();
     let prevGray = new cv.Mat();
     let diff = new cv.Mat();
     
     let cooldown = 0;
-    const TOTAL_FRAMES = 100; // Sample rate (not actual frames)
+    currentStep = 1;
 
-    // Helper to draw debug boxes
-    function drawDebug() {
-        if(!debugCheckbox.checked) return;
-        debugCtx.clearRect(0,0,w,h);
-        debugCtx.strokeStyle = "red";
-        debugCtx.lineWidth = 2;
-        zones.forEach(z => {
-            debugCtx.strokeStyle = z.locked ? "#00ff00" : "red"; // Green if found
-            debugCtx.strokeRect(z.x, z.y, z.w, z.h);
-        });
-    }
+    // Reset UI Grid
+    document.querySelectorAll('.cell').forEach(c => {
+        c.classList.remove('detected'); 
+        c.innerHTML = '';
+    });
 
-    // Analysis Loop
-    const fps = 30;
-    const interval = 1/15; // Process 15 times per second video time
+    const interval = 1/15; // 15 FPS processing
     let currentTime = 0;
     const duration = videoPlayer.duration;
-    
-    document.getElementById('status').innerText = "Analyzing...";
 
     async function loop() {
         if(currentTime >= duration) {
-            document.getElementById('status').innerText = "Done!";
+            document.getElementById('status').innerText = "Complete!";
+            isProcessing = false;
+            document.getElementById('processBtn').disabled = false;
+            // Clean up OpenCV memory
             frame.delete(); gray.delete(); prevGray.delete(); diff.delete();
             return;
         }
 
+        // Seek
         videoPlayer.currentTime = currentTime;
         await new Promise(r => {
              const h = () => { videoPlayer.removeEventListener('seeked', h); r(); };
              videoPlayer.addEventListener('seeked', h);
         });
 
-        ctx.drawImage(videoPlayer, 0, 0, w, h);
+        // Draw and Process
+        procCtx.drawImage(videoPlayer, 0, 0, d.w, d.h);
+        
+        // Visual feedback on overlay (draw red boxes on locked zones)
+        overlayCtx.clearRect(0, 0, d.w, d.h);
+        overlayCtx.strokeStyle = "red";
+        overlayCtx.lineWidth = 2;
+        zones.filter(z => z.locked).forEach(z => {
+             overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
+             // Draw number
+             overlayCtx.fillStyle = "red";
+             overlayCtx.font = "30px Arial";
+             overlayCtx.fillText("Done", z.x + 10, z.y + 30);
+        });
+
         let src = cv.imread(procCanvas);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-        // Process frame
         if(!prevGray.empty() && cooldown <= 0) {
             cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 40, 255, cv.THRESH_BINARY);
+            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
 
             let changedZones = [];
 
-            // Check each zone individually
             zones.forEach(z => {
                 if(z.locked) return;
 
-                // Create ROI for this specific cell
-                let rect = new cv.Rect(z.x, z.y, z.w, z.h);
-                let roi = diff.roi(rect);
-                
-                // Count changed pixels
+                let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
                 let count = cv.countNonZero(roi);
                 let area = z.w * z.h;
-                
-                // Threshold: If >15% of the cell changed, it's a candidate
+
+                // Sensitivity: if 15% of the inner box changes
                 if(count > (area * 0.15)) {
                     changedZones.push(z);
                 }
                 roi.delete();
             });
 
-            // LOGIC: If exactly 1 or 2 zones change, it's a flip.
-            // If >3 zones change, it's a global animation (like "LOOK" text), so IGNORE.
-            if(changedZones.length > 0 && changedZones.length < 3) {
-                let z = changedZones[0]; // Take the first one
+            // Filter out full-screen animations (if >3 zones change at once, ignore)
+            if(changedZones.length > 0 && changedZones.length <= 2) {
+                let z = changedZones[0];
                 z.locked = true;
                 
-                // Update UI
-                let cell = document.getElementById(`c-${z.id}`);
+                // Update HTML Grid
+                const cell = document.getElementById(`c-${z.id}`);
                 cell.classList.add('detected');
                 cell.innerText = currentStep;
                 
                 currentStep++;
-                cooldown = 5; // Skip next 5 checks (approx 0.3s)
+                cooldown = 4; // Short pause to prevent double counting
             }
         }
 
         if(cooldown > 0) cooldown--;
 
-        drawDebug(); // Update red boxes
         gray.copyTo(prevGray);
         src.delete();
-
         currentTime += interval;
         requestAnimationFrame(loop);
     }
