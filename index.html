@@ -3,81 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memory Game Auto-Solver</title>
+    <title>Memory Game Auto-Solver V2</title>
     <style>
-        :root { --primary: #ff6b6b; --bg: #f4f7f6; }
+        :root { --primary: #ff6b6b; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
         
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; width: 100%; text-align: center; }
-        
-        /* Upload Area */
-        .upload-box { border: 2px dashed #cbd5e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; cursor: pointer; transition: 0.3s; }
-        .upload-box:hover { border-color: var(--primary); background: #fff5f5; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; width: 100%; text-align: center; }
         
         /* Grid System 4x5 */
         .game-grid { 
             display: grid; 
             grid-template-columns: repeat(4, 1fr); 
-            gap: 8px; 
+            gap: 10px; 
             margin-top: 20px; 
             aspect-ratio: 4/5;
         }
         
         .cell {
-            background: #e2e8f0;
+            background: #e9ecef;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             font-weight: bold;
-            color: #4a5568;
+            color: #adb5bd;
             position: relative;
-            transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s;
         }
 
-        /* Active State (When a step is detected) */
+        /* Active State */
         .cell.detected {
             background: white;
-            border: 2px solid var(--primary);
+            border: 3px solid var(--primary);
             color: var(--primary);
             transform: scale(1.05);
-            box-shadow: 0 4px 6px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
         }
 
-        .step-number { font-size: 24px; }
+        /* Debug Canvas overlay */
+        .video-wrapper {
+            position: relative;
+            margin: 20px auto;
+            max-width: 300px; /* Small preview */
+            display: none;
+        }
+        .video-wrapper.show { display: block; }
+        
+        video, canvas { width: 100%; border-radius: 8px; }
+        #debugCanvas { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-        /* Controls */
-        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; disabled: true; }
+        button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px; }
         button:disabled { background: #cbd5e0; cursor: not-allowed; }
         
-        #status { margin-top: 10px; font-size: 0.9rem; color: #718096; }
-        
-        /* Hidden Processing Elements */
-        .hidden { display: none; }
+        .controls { margin: 15px 0; display: flex; gap: 10px; justify-content: center; align-items: center; }
+        label { font-size: 0.9rem; color: #495057; cursor: pointer;}
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady();"></script>
 </head>
 <body>
 
 <div class="container">
-    <h2>Memory Pattern Recorder</h2>
+    <h2>Memory Pattern Recorder V2</h2>
     
-    <div class="upload-box" onclick="document.getElementById('videoInput').click()">
-        <p>📂 Click to Upload Screen Recording</p>
-        <input type="file" id="videoInput" accept="video/*" class="hidden">
+    <input type="file" id="videoInput" accept="video/*" style="margin-bottom: 10px;">
+    
+    <div class="controls">
+        <button id="processBtn" disabled>Start Analysis</button>
+        <div>
+            <input type="checkbox" id="showDebug"> 
+            <label for="showDebug">Show Debug View (See ROI)</label>
+        </div>
     </div>
 
-    <button id="processBtn" disabled>Analyze Video</button>
-    <div id="status">Loading OpenCV engine...</div>
+    <div id="status">Loading OpenCV...</div>
 
-    <div class="game-grid" id="grid">
-        </div>
+    <div class="game-grid" id="grid"></div>
+
+    <div class="video-wrapper" id="videoContainer">
+        <video id="videoPlayer" muted playsinline></video>
+        <canvas id="debugCanvas"></canvas>
+    </div>
 </div>
 
-<video id="videoPlayer" class="hidden" muted></video>
-<canvas id="processCanvas" class="hidden"></canvas>
+<canvas id="procCanvas" style="display:none;"></canvas>
 
 <script src="script.js"></script>
 </body>
