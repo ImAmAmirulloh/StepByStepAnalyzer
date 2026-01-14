@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game Auto-Solver</title>
+    <style>
+        :root { --primary: #ff6b6b; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; width: 100%; text-align: center; }
+        
+        /* Upload Area */
+        .upload-box { border: 2px dashed #cbd5e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; cursor: pointer; transition: 0.3s; }
+        .upload-box:hover { border-color: var(--primary); background: #fff5f5; }
+        
+        /* Grid System 4x5 */
+        .game-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 8px; 
+            margin-top: 20px; 
+            aspect-ratio: 4/5;
+        }
+        
+        .cell {
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4a5568;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Active State (When a step is detected) */
+        .cell.detected {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            transform: scale(1.05);
+            box-shadow: 0 4px 6px rgba(255, 107, 107, 0.3);
+        }
+
+        .step-number { font-size: 24px; }
+
+        /* Controls */
+        button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; disabled: true; }
+        button:disabled { background: #cbd5e0; cursor: not-allowed; }
+        
+        #status { margin-top: 10px; font-size: 0.9rem; color: #718096; }
+        
+        /* Hidden Processing Elements */
+        .hidden { display: none; }
+    </style>
+    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady();"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>Memory Pattern Recorder</h2>
+    
+    <div class="upload-box" onclick="document.getElementById('videoInput').click()">
+        <p>📂 Click to Upload Screen Recording</p>
+        <input type="file" id="videoInput" accept="video/*" class="hidden">
+    </div>
+
+    <button id="processBtn" disabled>Analyze Video</button>
+    <div id="status">Loading OpenCV engine...</div>
+
+    <div class="game-grid" id="grid">
+        </div>
+</div>
+
+<video id="videoPlayer" class="hidden" muted></video>
+<canvas id="processCanvas" class="hidden"></canvas>
+
+<script src="script.js"></script>
+</body>
+</html>
