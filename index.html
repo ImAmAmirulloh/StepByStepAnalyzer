@@ -73,8 +73,8 @@
         
         .cell {
             aspect-ratio: 1;
-            background: #e9ecef;
             border-radius: 50%;
+            outline: 2px purple;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -85,7 +85,7 @@
         }
         
         .cell.detected {
-            background: white;
+            outline: 2px red;
             border-color: var(--primary);
             color: var(--primary);
             box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
@@ -127,7 +127,7 @@
     
     <h3>Results</h3>
     <div class="game-grid">
-        <img src="/tem_bg.jpg"/>
+        <img src="/tem_bg.png"/>
         <div id="grid"></div>
     </div>
 </div>
