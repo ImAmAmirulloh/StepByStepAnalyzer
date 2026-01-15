@@ -222,3 +222,108 @@ async function startAnalysis() {
 
     loop();
 }
+
+// Helper to generate a random UUID (Key Mapper needs unique IDs)
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function downloadKeyMapperJSON() {
+    // 1. Gather and Sort Steps
+    let steps = [];
+    zones.forEach(z => {
+        if (z.locked) {
+            let cell = document.getElementById(`c-${z.id}`);
+            let stepNum = parseInt(cell.innerText);
+            
+            // Calculate Center of the cell
+            let centerX = Math.floor(z.x + (z.w / 2));
+            let centerY = Math.floor(z.y + (z.h / 2));
+            
+            steps.push({ step: stepNum, x: centerX, y: centerY });
+        }
+    });
+
+    // Sort steps 1 -> 20
+    steps.sort((a, b) => a.step - b.step);
+
+    if (steps.length === 0) {
+        alert("Please analyze the video first to find steps!");
+        return;
+    }
+
+    // 2. Build the Action List (The Taps)
+    let actionList = steps.map(s => {
+        return {
+            "type": "TAP_COORDINATE",
+            "data": `${s.x},${s.y}`, // Coordinate format "X,Y"
+            "flags": 0,
+            "uid": generateUUID(),
+            "extras": [
+                {
+                    "id": "extra_coordinate_description",
+                    "data": `Step ${s.step}`
+                },
+                {
+                    "id": "extra_delay_before_next_action",
+                    "data": "400" // 400ms delay between taps (Adjust if too fast)
+                }
+            ]
+        };
+    });
+
+    // 3. Construct the Full Key Mapper JSON Structure
+    const keyMapperData = {
+        "app_version": 63,
+        "keymap_db_version": 13,
+        "fingerprint_map_list": [
+             // Default empty fingerprint configs to prevent errors
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":0,"enabled":true},
+            {"action_list":[],"constraints":[],"constraint_mode":1,"extras":[],"flags":0,"id":1,"enabled":true}
+        ],
+        "keymap_list": [
+            {
+                "id": 1, // The ID of this specific keymap
+                "uid": generateUUID(),
+                "isEnabled": true,
+                "flags": 0,
+                "constraintMode": 1,
+                "constraintList": [],
+                // THE TRIGGER: Volume Up Key (KeyCode 24)
+                "trigger": {
+                    "mode": 2, 
+                    "flags": 0,
+                    "extras": [],
+                    "keys": [
+                        {
+                            "keyCode": 24, 
+                            "clickType": 2, // Press
+                            "flags": 0,
+                            "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+                            "uid": generateUUID()
+                        }
+                    ]
+                },
+                // THE ACTIONS: Our calculated steps
+                "actionList": actionList
+            }
+        ]
+    };
+
+    // 4. Download the file
+    const blob = new Blob([JSON.stringify(keyMapperData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'KeyMapper_MemorySolve.json';
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Don't forget to enable the button when analysis finishes!
+// Inside your existing loop() function, where it says "Complete!":
+// document.getElementById('btnKeyMapper').disabled = false;
