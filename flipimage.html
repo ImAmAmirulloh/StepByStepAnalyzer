@@ -255,16 +255,80 @@ function updateCellUI(idx, pairId, label) {
 }
 
 document.getElementById('btnDownload').onclick = () => {
-    detectedSteps.sort((a,b) => a.step - b.step);
-    const actionList = detectedSteps.map((s, i) => ({
-        "type": "TAP_COORDINATE", "data": `${s.x},${s.y}`,
-        "extras": [{"id":"extra_coordinate_description","data":`S${s.step}`},{"id":"extra_delay_before_next_action","data": (i%2!==0?"950":"350")}],
-        "uid": crypto.randomUUID()
-    }));
-    const keymap = { "app_version":63, "keymap_db_version":13, "fingerprint_map_list":[{"action_list":[],"id":0,"enabled":true}], "keymap_list":[{"id":1,"isEnabled":true,"uid":crypto.randomUUID(),"trigger":{"mode":2,"keys":[{"keyCode":24,"clickType":2,"uid":crypto.randomUUID()}]},"actionList":actionList}] };
-    const blob = new Blob([JSON.stringify(keymap, null, 2)], {type: 'application/json'});
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-    a.download = 'Memory_4x7_Precision.json'; a.click();
+    // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
+    // Assumes s.step is a number (1, 1.5, 2, 2.5) or you can map 1b to 1.5 for sorting
+    detectedSteps.sort((a, b) => a.step - b.step);
+
+    const actionList = detectedSteps.map((s, i) => {
+        // Formatting the name: if it's a pair (e.g. step 1.5), call it '1b', else '1'
+        const stepName = Number.isInteger(s.step) ? `${s.step}` : `${Math.floor(s.step)}b`;
+        
+        // Horizontal and Vertical Precision alignment logic
+        // This ensures Row 1 is always exactly 735, Row 2 is 976, etc.
+        // And Col 1 is 200, Col 2 is 490, etc.
+        const precisionX = s.x; 
+        const precisionY = s.y;
+
+        return {
+            "data": `${precisionX},${precisionY}`,
+            "extras": [
+                {
+                    "data": stepName,
+                    "id": "extra_coordinate_description"
+                },
+                {
+                    "data": (i % 2 !== 0 ? "950" : "350"), // Pair timing: fast tap, long wait
+                    "id": "extra_delay_before_next_action"
+                }
+            ],
+            "flags": 0,
+            "type": "TAP_COORDINATE",
+            "uid": crypto.randomUUID()
+        };
+    });
+
+    // 2. The exact early JSON structure for compatibility
+    const keymap = {
+        "app_version": 63,
+        "keymap_db_version": 13,
+        "fingerprint_map_list": [
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+        ],
+        "keymap_list": [{
+            "actionList": actionList,
+            "constraintList": [],
+            "constraintMode": 1,
+            "flags": 0,
+            "id": 27,
+            "isEnabled": true,
+            "trigger": {
+                "extras": [],
+                "flags": 1,
+                "keys": [{
+                    "clickType": 2, // Double Click/Press
+                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+                    "flags": 0,
+                    "keyCode": 24, // Volume Up
+                    "uid": crypto.randomUUID()
+                }],
+                "mode": 2
+            },
+            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
+        }]
+    };
+
+    const blob = new Blob([JSON.stringify(keymap, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Memory_4x7_Precision.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 </script>
 </body>
