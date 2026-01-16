@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Memory Game Solver</title>
+    <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; text-align: center; }
+        #output-grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 10px; justify-content: center; margin-top: 20px; }
+        .cell { width: 80px; height: 100px; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; background: white; font-weight: bold; }
+        .match-1 { background-color: #ffcccc; } .match-2 { background-color: #ccffcc; } /* ... etc */
+    </style>
+</head>
+<body>
+    <h2>Memory Game Pair Finder || <a href="index.html">Steps Game Memory</a></h2>
+    <input type="file" id="fileInput" accept="image/*">
+    <canvas id="canvasInput" style="display:none;"></canvas>
+    
+    <div id="results">
+        <h3>Detected Pairs:</h3>
+        <ul id="pairList"></ul>
+        <div id="output-grid"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const pairList = document.getElementById('pairList');
+        const gridContainer = document.getElementById('output-grid');
+
+        fileInput.onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => processImage(img);
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+
+        function processImage(imgElement) {
+            let src = cv.imread(imgElement);
+            let cells = [];
+            const rows = 7;
+            const cols = 4;
+            
+            // Define the game board area (Crop out headers/footers)
+            // In your image, the grid starts roughly 15% from top and ends 10% from bottom
+            let rect = new cv.Rect(50, 150, src.cols - 100, src.rows - 300);
+            let board = src.roi(rect);
+
+            let cellW = board.cols / cols;
+            let cellH = board.rows / rows;
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    let cellRect = new cv.Rect(j * cellW, i * cellH, cellW, cellH);
+                    cells.push(board.roi(cellRect));
+                }
+            }
+
+            findMatches(cells);
+        }
+
+        function findMatches(cells) {
+            let pairs = [];
+            let matched = new Set();
+
+            for (let i = 0; i < cells.length; i++) {
+                if (matched.has(i)) continue;
+                for (let j = i + 1; j < cells.length; j++) {
+                    if (matched.has(j)) continue;
+
+                    // Simple Template Matching / MSE
+                    if (isMatch(cells[i], cells[j])) {
+                        pairs.push([i + 1, j + 1]);
+                        matched.add(i);
+                        matched.add(j);
+                        break;
+                    }
+                }
+            }
+            displayResults(pairs);
+        }
+
+        function isMatch(img1, img2) {
+            // Logic: Compare histograms or Mean Square Error
+            let diff = new cv.Mat();
+            cv.absdiff(img1, img2, diff);
+            let grey = new cv.Mat();
+            cv.cvtColor(diff, grey, cv.COLOR_RGBA2GRAY);
+            let mean = cv.mean(grey)[0];
+            
+            diff.delete(); grey.delete();
+            return mean < 20; // Sensitivity threshold
+        }
+
+        function displayResults(pairs) {
+            pairList.innerHTML = "";
+            pairs.forEach((pair, idx) => {
+                let li = document.createElement('li');
+                li.innerText = `Step ${idx + 1}: Match found at Cell ${pair[0]} and Cell ${pair[1]}`;
+                pairList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
