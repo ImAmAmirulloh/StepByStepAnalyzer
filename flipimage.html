@@ -3,69 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Solver - Debug Mode</title>
+    <title>Memory Solver - Precision Mode</title>
     <style>
         :root { --primary: #00cec9; --bg: #f5f6fa; --text: #2f3640; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; box-sizing: border-box; position: relative; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; box-sizing: border-box; }
         
-        /* PREVIEW */
-        .preview-container { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 20px; line-height: 0; }
+        /* IMAGE PREVIEW */
+        .preview-container { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; line-height: 0; }
         #imgPreview { width: 100%; height: auto; display: block; }
         #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
         /* LOADER */
         .loader-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.8); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 8px; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(3600deg); } }
+        .spinner { width: 40px; height: 40px; border: 4px solid #eee; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* CONTROLS */
-        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 20px; }
-        .slider-group { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .slider-group label { width: 70px; font-size: 0.85rem; font-weight: bold; }
-        input[type=range] { flex: 1; accent-color: var(--primary); }
+        /* PRECISION CONTROLS */
+        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
+        .slider-row { margin-bottom: 12px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
+        .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
 
         .action-btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; font-weight: bold; }
         .action-btn:disabled { background: #b2bec3; }
 
         /* RESULTS */
         .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; }
-        .cell { aspect-ratio: 1; background: #f1f2f6; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; color: #bdc3c7; border: 2px solid transparent; }
-        .cell.matched { background: white; border-color: var(--primary); color: var(--primary); }
-        .cell span { font-size: 0.65rem; color: #636e72; }
+        .cell { aspect-ratio: 1; background: #f1f2f6; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; color: #bdc3c7; border: 2px solid transparent; }
+        .cell.matched { background: #e3fdfd; border-color: var(--primary); color: var(--primary); }
+        .cell span { font-size: 0.6rem; }
 
-        /* DEBUG SECTION */
-        #debugSection { margin-top: 20px; width: 100%; display: none; }
-        #debugCanvasContainer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #333; padding: 5px; }
-        #status { text-align: center; font-size: 0.85rem; margin: 10px 0; color: #636e72; }
+        #debugSection { margin-top: 15px; width: 100%; border-top: 1px solid #eee; padding-top: 10px; display: none; }
+        #debugCanvasContainer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #222; padding: 4px; border-radius: 4px; }
+        #status { text-align: center; font-size: 0.8rem; margin-bottom: 10px; color: #636e72; height: 1.2em; }
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onCvLoaded()"></script>
 </head>
 <body>
 
 <div class="main-container">
-    <h2>4x7 Pair Solver || <a href="index.html">Video Steps Analyzer</a></h2>
+    <h2>Same Image Flip || <a href="index.html">Memory Pattern Recorder V3</a></h2>
+    <div id="status">Loading AI Engine...</div>
+
     <input type="file" id="fileInput" accept="image/*" style="width:100%; margin-bottom:15px;">
-    <div id="status">Waiting for OpenCV...</div>
 
     <div class="preview-container">
-        <img id="imgPreview" src="" alt="">
+        <img id="imgPreview" src="">
         <canvas id="overlayCanvas"></canvas>
         <div id="loadingOverlay" class="loader-overlay"><div class="spinner"></div></div>
     </div>
 
     <div class="control-panel">
-        <div class="slider-group"><label>Top</label><input type="range" id="tSlider" min="0" max="50" value="12"></div>
-        <div class="slider-group"><label>Bottom</label><input type="range" id="bSlider" min="0" max="50" value="8"></div>
-        <div class="slider-group"><label>Sides</label><input type="range" id="sSlider" min="0" max="30" value="4"></div>
-        <button id="btnProcess" class="action-btn" disabled>🔍 Find Pairs</button>
+        <div class="slider-row">
+            <div class="slider-header"><label>TOP MARGIN</label><span class="val-badge" id="v-t">12.6</span></div>
+            <input type="range" id="tSlider" min="0" max="100" step="0.1" value="12.6">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>BOTTOM MARGIN</label><span class="val-badge" id="v-b">12.6</span></div>
+            <input type="range" id="bSlider" min="0" max="100" step="0.1" value="12.6">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>SIDE MARGIN</label><span class="val-badge" id="v-s">8.9</span></div>
+            <input type="range" id="sSlider" min="0" max="50" step="0.1" value="8.9">
+        </div>
+        <div class="slider-row" style="border-top: 1px solid #eee; padding-top: 10px;">
+            <div class="slider-header"><label>MATCH SENSITIVITY (LOOSENESS)</label><span class="val-badge" id="v-sens">45%</span></div>
+            <input type="range" id="sensSlider" min="5" max="50" step="1" value="45">
+            <p style="font-size: 0.65rem; color: #999; margin: 4px 0 0 0;">Increase if matches aren't found. Decrease if matches are wrong.</p>
+        </div>
+        <button id="btnProcess" class="action-btn" disabled style="margin-top:10px;">🔍 Find Pairs</button>
     </div>
 
     <div id="resultsGrid" class="results-grid"></div>
-    <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:20px; display:none;">Download Key Mapper JSON</button>
+    <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:15px; display:none;">Download JSON</button>
 
     <div id="debugSection">
-        <p style="font-size:0.7rem; font-weight:bold;">Analyzer Vision (Check if icons are centered):</p>
+        <p style="font-size:0.65rem; font-weight:bold; color:#636e72;">AI VISION (Icons should be inside these boxes):</p>
         <div id="debugCanvasContainer"></div>
     </div>
 </div>
@@ -106,13 +122,23 @@ document.getElementById('fileInput').onchange = (e) => {
     };
 };
 
-document.querySelectorAll('input[type=range]').forEach(s => s.oninput = drawGrid);
+// Update labels and draw grid on slider move
+document.querySelectorAll('input[type=range]').forEach(s => {
+    s.oninput = () => {
+        const valId = "v-" + s.id.substring(0, s.id.length-6);
+        if(document.getElementById(valId)) {
+            document.getElementById(valId).innerText = s.value + (s.id === 'sensSlider' ? "%" : "");
+        }
+        drawGrid();
+    };
+});
 
 function getZones() {
     const w = overlay.width; const h = overlay.height;
     const t = document.getElementById('tSlider').value / 100;
     const b = document.getElementById('bSlider').value / 100;
     const s = document.getElementById('sSlider').value / 100;
+    
     const startX = w * s, endX = w * (1 - s), startY = h * t, endY = h * (1 - b);
     const cellW = (endX - startX) / 4, cellH = (endY - startY) / 7;
     let zones = [];
@@ -133,19 +159,19 @@ function drawGrid() {
     if(!img.src) return;
     ctx.clearRect(0,0, overlay.width, overlay.height);
     const zones = getZones();
-    ctx.strokeStyle = '#00cec9'; ctx.lineWidth = Math.max(2, overlay.width / 200);
+    ctx.strokeStyle = '#00cec9'; ctx.lineWidth = Math.max(1, overlay.width / 400);
     zones.forEach(z => {
         ctx.strokeRect(z.x, z.y, z.w, z.h);
         ctx.fillStyle = 'red'; ctx.beginPath();
-        ctx.arc(z.cx, z.cy, ctx.lineWidth * 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.arc(z.cx, z.cy, ctx.lineWidth * 3, 0, Math.PI*2); ctx.fill();
     });
 }
 
 btnProcess.onclick = async () => {
     document.getElementById('loadingOverlay').style.display = 'flex';
     btnProcess.disabled = true;
-    updateStatus("Analyzing...");
-    await new Promise(r => setTimeout(r, 150));
+    updateStatus("Running AI Analysis...");
+    await new Promise(r => setTimeout(r, 200));
 
     try {
         detectedSteps = []; initGridUI();
@@ -164,13 +190,12 @@ btnProcess.onclick = async () => {
         document.getElementById('debugSection').style.display = 'block';
 
         zones.forEach((z, i) => {
-            // CROP: Use 60% of the box center
+            // Precise crop of 60% of the box
             let roiRect = new cv.Rect(z.x + z.w*0.2, z.y + z.h*0.2, z.w*0.6, z.h*0.6);
             let roi = gray.roi(roiRect);
             let resized = new cv.Mat();
             cv.resize(roi, resized, new cv.Size(40, 40));
             
-            // Show debug image
             let canvas = document.createElement('canvas');
             canvas.width = 40; canvas.height = 40;
             debugContainer.appendChild(canvas);
@@ -180,14 +205,14 @@ btnProcess.onclick = async () => {
             roi.delete();
         });
 
+        const thresholdPercent = document.getElementById('sensSlider').value / 100;
         let matched = new Set();
         let pairCount = 1;
-        const totalPixels = 40 * 40;
 
         for(let i=0; i<cellMats.length; i++) {
             if(matched.has(i)) continue;
             let bestMatch = -1;
-            let bestScore = 1.0; // Lower is better
+            let bestScore = 1.0;
 
             for(let j=i+1; j<cellMats.length; j++) {
                 if(matched.has(j)) continue;
@@ -195,13 +220,11 @@ btnProcess.onclick = async () => {
                 let diff = new cv.Mat();
                 cv.absdiff(cellMats[i].mat, cellMats[j].mat, diff);
                 cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
-                let score = cv.countNonZero(diff) / totalPixels;
+                let score = cv.countNonZero(diff) / (40*40);
                 diff.delete();
 
-                // If less than 18% of pixels are different, it's likely a match
-                if(score < 0.18 && score < bestScore) {
-                    bestScore = score;
-                    bestMatch = j;
+                if(score < thresholdPercent && score < bestScore) {
+                    bestScore = score; bestMatch = j;
                 }
             }
 
@@ -216,8 +239,8 @@ btnProcess.onclick = async () => {
         }
         src.delete(); gray.delete();
         cellMats.forEach(m => m.mat.delete());
-        updateStatus(pairCount > 1 ? `Found ${pairCount-1} pairs!` : "No matches found. Adjust grid!");
-    } catch (e) { console.error(e); updateStatus("Error."); }
+        updateStatus(pairCount > 1 ? `Success! ${pairCount-1} pairs found.` : "No matches. Adjust sliders or Sensitivity.");
+    } catch (e) { updateStatus("Error processing."); }
     finally {
         document.getElementById('loadingOverlay').style.display = 'none';
         btnProcess.disabled = false;
@@ -235,13 +258,13 @@ document.getElementById('btnDownload').onclick = () => {
     detectedSteps.sort((a,b) => a.step - b.step);
     const actionList = detectedSteps.map((s, i) => ({
         "type": "TAP_COORDINATE", "data": `${s.x},${s.y}`,
-        "extras": [{"id":"extra_coordinate_description","data":`S${s.step}`},{"id":"extra_delay_before_next_action","data": (i%2!==0?"850":"300")}],
+        "extras": [{"id":"extra_coordinate_description","data":`S${s.step}`},{"id":"extra_delay_before_next_action","data": (i%2!==0?"950":"350")}],
         "uid": crypto.randomUUID()
     }));
     const keymap = { "app_version":63, "keymap_db_version":13, "fingerprint_map_list":[{"action_list":[],"id":0,"enabled":true}], "keymap_list":[{"id":1,"isEnabled":true,"uid":crypto.randomUUID(),"trigger":{"mode":2,"keys":[{"keyCode":24,"clickType":2,"uid":crypto.randomUUID()}]},"actionList":actionList}] };
     const blob = new Blob([JSON.stringify(keymap, null, 2)], {type: 'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
-    a.download = 'Memory_4x7.json'; a.click();
+    a.download = 'Memory_4x7_Precision.json'; a.click();
 };
 </script>
 </body>
