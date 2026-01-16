@@ -91,6 +91,9 @@
             color: var(--primary);
             box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2);
         }
+        #btnKeyMapper {
+            z-index: 10;position: fixed;bottom: 20px;
+        }
         </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady();"></script>
 </head>
@@ -134,15 +137,15 @@
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
+
+<script src="script.js"></script>
+</body>
 <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
     <h3>Step 4: Automate with Key Mapper</h3>
     <p style="font-size: 0.9rem; color: #666;">
         Generates a backup file for the "Key Mapper" app.<br>
         <strong>Trigger:</strong> Volume Up Button
     </p>
-    <button id="btnKeyMapper" onclick="downloadKeyMapperJSON()" disabled style="background-color: #2ecc71;">Download JSON for Key Mapper</button>
+    <button id="btnKeyMapper" onclick="downloadKeyMapperJSON()" style="background-color: #2ecc71;">Download JSON for Key Mapper</button>
 </div>
-
-<script src="script.js"></script>
-</body>
 </html>
