@@ -2,143 +2,247 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Solver + Debug View</title>
-    <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Memory Solver - Debug Mode</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; }
-        body { font-family: system-ui; background: var(--bg); color: white; text-align: center; padding: 20px; }
+        :root { --primary: #00cec9; --bg: #f5f6fa; --text: #2f3640; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .main-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; box-sizing: border-box; position: relative; }
         
-        /* Main Result Grid */
-        #grid-container { 
-            display: grid; grid-template-columns: repeat(4, 75px); 
-            gap: 10px; justify-content: center; margin: 20px auto;
-            padding: 20px; background: var(--card); border-radius: 12px; width: fit-content;
-        }
-        .cell {
-            width: 75px; height: 75px; display: flex; align-items: center;
-            justify-content: center; font-size: 28px; font-weight: 800;
-            border-radius: 8px; background: #334155; border: 2px solid transparent;
-        }
+        /* PREVIEW */
+        .preview-container { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 20px; line-height: 0; }
+        #imgPreview { width: 100%; height: auto; display: block; }
+        #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-        /* Debug Section */
-        #debug-section { margin-top: 40px; border-top: 1px solid #334155; padding-top: 20px; }
-        .debug-canvas-grid { 
-            display: grid; grid-template-columns: repeat(7, 1fr); 
-            gap: 5px; margin-top: 10px; justify-items: center;
-        }
-        canvas { border: 1px solid var(--accent); max-width: 100%; height: auto; }
-        .debug-label { font-size: 10px; color: var(--accent); }
+        /* LOADER */
+        .loader-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.8); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 8px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(3600deg); } }
+
+        /* CONTROLS */
+        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 20px; }
+        .slider-group { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .slider-group label { width: 70px; font-size: 0.85rem; font-weight: bold; }
+        input[type=range] { flex: 1; accent-color: var(--primary); }
+
+        .action-btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; font-weight: bold; }
+        .action-btn:disabled { background: #b2bec3; }
+
+        /* RESULTS */
+        .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; }
+        .cell { aspect-ratio: 1; background: #f1f2f6; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; color: #bdc3c7; border: 2px solid transparent; }
+        .cell.matched { background: white; border-color: var(--primary); color: var(--primary); }
+        .cell span { font-size: 0.65rem; color: #636e72; }
+
+        /* DEBUG SECTION */
+        #debugSection { margin-top: 20px; width: 100%; display: none; }
+        #debugCanvasContainer { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: #333; padding: 5px; }
+        #status { text-align: center; font-size: 0.85rem; margin: 10px 0; color: #636e72; }
     </style>
+    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onCvLoaded()"></script>
 </head>
 <body>
 
-    <h1>Memory Solver</h1>
-    <input type="file" id="fileInput" accept="image/*">
+<div class="main-container">
+    <h2>4x7 Pair Solver || <a href="index.html">Video Steps Analyzer</a></h2>
+    <input type="file" id="fileInput" accept="image/*" style="width:100%; margin-bottom:15px;">
+    <div id="status">Waiting for OpenCV...</div>
 
-    <div id="grid-container"></div>
-
-    <div id="debug-section">
-        <h3>Debug: Image Slices</h3>
-        <p>This shows exactly what the AI is comparing:</p>
-        <div id="debug-output" class="debug-canvas-grid"></div>
+    <div class="preview-container">
+        <img id="imgPreview" src="" alt="">
+        <canvas id="overlayCanvas"></canvas>
+        <div id="loadingOverlay" class="loader-overlay"><div class="spinner"></div></div>
     </div>
 
-    <script>
-        const colors = ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#ec4899', '#06b6d4', '#f97316', '#10b981', '#6366f1', '#f43f5e', '#8b5cf6', '#d946ef', '#14b8a6'];
+    <div class="control-panel">
+        <div class="slider-group"><label>Top</label><input type="range" id="tSlider" min="0" max="50" value="12"></div>
+        <div class="slider-group"><label>Bottom</label><input type="range" id="bSlider" min="0" max="50" value="8"></div>
+        <div class="slider-group"><label>Sides</label><input type="range" id="sSlider" min="0" max="30" value="4"></div>
+        <button id="btnProcess" class="action-btn" disabled>🔍 Find Pairs</button>
+    </div>
 
-        // Initialize empty result grid
-        const grid = document.getElementById('grid-container');
-        for(let i=0; i<28; i++) {
-            let div = document.createElement('div');
-            div.className = 'cell';
-            div.id = `res-${i}`;
-            div.innerText = '?';
-            grid.appendChild(div);
-        }
+    <div id="resultsGrid" class="results-grid"></div>
+    <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:20px; display:none;">Download Key Mapper JSON</button>
 
-        document.getElementById('fileInput').onchange = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                let src = cv.imread(img);
-                process(src);
-            };
-            img.src = URL.createObjectURL(e.target.files[0]);
-        };
+    <div id="debugSection">
+        <p style="font-size:0.7rem; font-weight:bold;">Analyzer Vision (Check if icons are centered):</p>
+        <div id="debugCanvasContainer"></div>
+    </div>
+</div>
 
-        function process(src) {
-            const debugOutput = document.getElementById('debug-output');
-            debugOutput.innerHTML = ""; // Clear old debug
-            
-            // 1. Precise Crop based on your image layout
-            // Adjusted to remove the "Ranking stage" and "Forfeit" areas
-            let x = src.cols * 0.1;
-            let y = src.rows * 0.12;
-            let w = src.cols * 0.8;
-            let h = src.rows * 0.76;
-            let board = src.roi(new cv.Rect(x, y, w, h));
+<canvas id="procCanvas" style="display:none;"></canvas>
 
-            let cellW = board.cols / 4;
-            let cellH = board.rows / 7;
-            let cells = [];
+<script>
+let cvReady = false;
+let detectedSteps = [];
+const img = document.getElementById('imgPreview');
+const overlay = document.getElementById('overlayCanvas');
+const ctx = overlay.getContext('2d');
+const pCanvas = document.getElementById('procCanvas');
+const btnProcess = document.getElementById('btnProcess');
 
-            for (let i = 0; i < 28; i++) {
-                let row = Math.floor(i / 4);
-                let col = i % 4;
-                let rect = new cv.Rect(col * cellW, row * cellH, cellW, cellH);
-                let cellMat = board.roi(rect);
-                cells.push(cellMat);
+function onCvLoaded() { cvReady = true; updateStatus("Ready. Upload screenshot."); initGridUI(); }
+function updateStatus(msg) { document.getElementById('status').innerText = msg; }
 
-                // --- SHOW DEBUG IMAGE ---
-                let container = document.createElement('div');
-                let canvas = document.createElement('canvas');
-                let label = document.createElement('div');
-                label.className = 'debug-label';
-                label.innerText = `ID: ${i}`;
-                cv.imshow(canvas, cellMat);
-                container.appendChild(canvas);
-                container.appendChild(label);
-                debugOutput.appendChild(container);
-            }
+function initGridUI() {
+    const grid = document.getElementById('resultsGrid');
+    grid.innerHTML = '';
+    for(let i=0; i<28; i++) {
+        let d = document.createElement('div');
+        d.className = 'cell'; d.id = `cell-${i}`; d.innerText = i + 1;
+        grid.appendChild(d);
+    }
+}
 
-            findPairs(cells);
-        }
+document.getElementById('fileInput').onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+        overlay.width = img.naturalWidth;
+        overlay.height = img.naturalHeight;
+        drawGrid();
+        btnProcess.disabled = false;
+    };
+};
 
-        function findPairs(cells) {
-            let matched = new Array(28).fill(false);
-            let pairCount = 0;
+document.querySelectorAll('input[type=range]').forEach(s => s.oninput = drawGrid);
 
-            for (let i = 0; i < 28; i++) {
-                if (matched[i]) continue;
-                for (let j = i + 1; j < 28; j++) {
-                    if (matched[j]) continue;
-
-                    if (compare(cells[i], cells[j])) {
-                        pairCount++;
-                        mark(i, j, pairCount);
-                        matched[i] = matched[j] = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        function compare(m1, m2) {
-            let diff = new cv.Mat();
-            cv.absdiff(m1, m2, diff);
-            cv.cvtColor(diff, diff, cv.COLOR_RGBA2GRAY);
-            let score = cv.mean(diff)[0];
-            diff.delete();
-            return score < 30; // Threshold: smaller is stricter
-        }
-
-        function mark(idx1, idx2, pairId) {
-            [idx1, idx2].forEach(id => {
-                let el = document.getElementById(`res-${id}`);
-                el.innerText = pairId;
-                el.style.backgroundColor = colors[(pairId - 1) % colors.length];
-                el.style.borderColor = 'white';
+function getZones() {
+    const w = overlay.width; const h = overlay.height;
+    const t = document.getElementById('tSlider').value / 100;
+    const b = document.getElementById('bSlider').value / 100;
+    const s = document.getElementById('sSlider').value / 100;
+    const startX = w * s, endX = w * (1 - s), startY = h * t, endY = h * (1 - b);
+    const cellW = (endX - startX) / 4, cellH = (endY - startY) / 7;
+    let zones = [];
+    for(let r=0; r<7; r++) {
+        for(let c=0; c<4; c++) {
+            zones.push({
+                x: startX + (c * cellW), y: startY + (r * cellH),
+                w: cellW, h: cellH,
+                cx: Math.floor(startX + (c * cellW) + cellW/2),
+                cy: Math.floor(startY + (r * cellH) + cellH/2)
             });
         }
-    </script>
+    }
+    return zones;
+}
+
+function drawGrid() {
+    if(!img.src) return;
+    ctx.clearRect(0,0, overlay.width, overlay.height);
+    const zones = getZones();
+    ctx.strokeStyle = '#00cec9'; ctx.lineWidth = Math.max(2, overlay.width / 200);
+    zones.forEach(z => {
+        ctx.strokeRect(z.x, z.y, z.w, z.h);
+        ctx.fillStyle = 'red'; ctx.beginPath();
+        ctx.arc(z.cx, z.cy, ctx.lineWidth * 1.5, 0, Math.PI*2); ctx.fill();
+    });
+}
+
+btnProcess.onclick = async () => {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    btnProcess.disabled = true;
+    updateStatus("Analyzing...");
+    await new Promise(r => setTimeout(r, 150));
+
+    try {
+        detectedSteps = []; initGridUI();
+        pCanvas.width = overlay.width; pCanvas.height = overlay.height;
+        const pCtx = pCanvas.getContext('2d');
+        pCtx.drawImage(img, 0, 0);
+
+        let src = cv.imread(pCanvas);
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        const zones = getZones();
+        let cellMats = [];
+        const debugContainer = document.getElementById('debugCanvasContainer');
+        debugContainer.innerHTML = '';
+        document.getElementById('debugSection').style.display = 'block';
+
+        zones.forEach((z, i) => {
+            // CROP: Use 60% of the box center
+            let roiRect = new cv.Rect(z.x + z.w*0.2, z.y + z.h*0.2, z.w*0.6, z.h*0.6);
+            let roi = gray.roi(roiRect);
+            let resized = new cv.Mat();
+            cv.resize(roi, resized, new cv.Size(40, 40));
+            
+            // Show debug image
+            let canvas = document.createElement('canvas');
+            canvas.width = 40; canvas.height = 40;
+            debugContainer.appendChild(canvas);
+            cv.imshow(canvas, resized);
+
+            cellMats.push({id: i, mat: resized, cx: z.cx, cy: z.cy});
+            roi.delete();
+        });
+
+        let matched = new Set();
+        let pairCount = 1;
+        const totalPixels = 40 * 40;
+
+        for(let i=0; i<cellMats.length; i++) {
+            if(matched.has(i)) continue;
+            let bestMatch = -1;
+            let bestScore = 1.0; // Lower is better
+
+            for(let j=i+1; j<cellMats.length; j++) {
+                if(matched.has(j)) continue;
+
+                let diff = new cv.Mat();
+                cv.absdiff(cellMats[i].mat, cellMats[j].mat, diff);
+                cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
+                let score = cv.countNonZero(diff) / totalPixels;
+                diff.delete();
+
+                // If less than 18% of pixels are different, it's likely a match
+                if(score < 0.18 && score < bestScore) {
+                    bestScore = score;
+                    bestMatch = j;
+                }
+            }
+
+            if(bestMatch !== -1) {
+                matched.add(i); matched.add(bestMatch);
+                updateCellUI(i, pairCount, "Tap 1");
+                updateCellUI(bestMatch, pairCount, "Tap 2");
+                detectedSteps.push({step: pairCount*2-1, x: cellMats[i].cx, y: cellMats[i].cy});
+                detectedSteps.push({step: pairCount*2, x: cellMats[bestMatch].cx, y: cellMats[bestMatch].cy});
+                pairCount++;
+            }
+        }
+        src.delete(); gray.delete();
+        cellMats.forEach(m => m.mat.delete());
+        updateStatus(pairCount > 1 ? `Found ${pairCount-1} pairs!` : "No matches found. Adjust grid!");
+    } catch (e) { console.error(e); updateStatus("Error."); }
+    finally {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        btnProcess.disabled = false;
+        document.getElementById('btnDownload').style.display = detectedSteps.length > 0 ? 'block' : 'none';
+    }
+};
+
+function updateCellUI(idx, pairId, label) {
+    const cell = document.getElementById(`cell-${idx}`);
+    cell.classList.add('matched');
+    cell.innerHTML = `${pairId}<br><span>${label}</span>`;
+}
+
+document.getElementById('btnDownload').onclick = () => {
+    detectedSteps.sort((a,b) => a.step - b.step);
+    const actionList = detectedSteps.map((s, i) => ({
+        "type": "TAP_COORDINATE", "data": `${s.x},${s.y}`,
+        "extras": [{"id":"extra_coordinate_description","data":`S${s.step}`},{"id":"extra_delay_before_next_action","data": (i%2!==0?"850":"300")}],
+        "uid": crypto.randomUUID()
+    }));
+    const keymap = { "app_version":63, "keymap_db_version":13, "fingerprint_map_list":[{"action_list":[],"id":0,"enabled":true}], "keymap_list":[{"id":1,"isEnabled":true,"uid":crypto.randomUUID(),"trigger":{"mode":2,"keys":[{"keyCode":24,"clickType":2,"uid":crypto.randomUUID()}]},"actionList":actionList}] };
+    const blob = new Blob([JSON.stringify(keymap, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+    a.download = 'Memory_4x7.json'; a.click();
+};
+</script>
 </body>
 </html>
