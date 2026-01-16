@@ -108,6 +108,17 @@ function initGridUI() {
         d.className = 'cell'; d.id = `cell-${i}`; d.innerText = i + 1;
         grid.appendChild(d);
     }
+    // Add this inside your existing initialization code
+window.addEventListener('load', () => {
+    loadSliderSettings();
+    
+    // Add event listeners to all sliders to save automatically when moved
+    const sliders = document.querySelectorAll('input[type="range"]');
+    sliders.forEach(slider => {
+        slider.addEventListener('change', saveSliderSettings);
+        slider.addEventListener('input', saveSliderSettings); 
+    });
+});
 }
 
 document.getElementById('fileInput').onchange = (e) => {
@@ -253,7 +264,32 @@ function updateCellUI(idx, pairId, label) {
     cell.classList.add('matched');
     cell.innerHTML = `${pairId}<br><span>${label}</span>`;
 }
+// Function to save all slider values to localStorage
+function saveSliderSettings() {
+    const settings = {};
+    const sliders = document.querySelectorAll('input[type="range"]');
+    sliders.forEach(slider => {
+        settings[slider.id] = slider.value;
+    });
+    localStorage.setItem('memoryAnalyzerSettings', JSON.stringify(settings));
+}
 
+// Function to load values from localStorage
+function loadSliderSettings() {
+    const saved = localStorage.getItem('memoryAnalyzerSettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        Object.keys(settings).forEach(id => {
+            const slider = document.getElementById(id);
+            if (slider) {
+                slider.value = settings[id];
+                // Trigger a 'input' event so the grid updates visually immediately
+                slider.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+}
+    
 document.getElementById('btnDownload').onclick = () => {
     // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
     // Assumes s.step is a number (1, 1.5, 2, 2.5) or you can map 1b to 1.5 for sorting
