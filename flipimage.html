@@ -2,30 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Memory Game Solver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Solver Grid</title>
     <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; text-align: center; }
-        #output-grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 10px; justify-content: center; margin-top: 20px; }
-        .cell { width: 80px; height: 100px; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; background: white; font-weight: bold; }
-        .match-1 { background-color: #ffcccc; } .match-2 { background-color: #ccffcc; } /* ... etc */
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        #grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(4, 70px); 
+            grid-template-rows: repeat(7, 70px); 
+            gap: 8px; 
+            margin-top: 20px;
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #0f3460;
+        }
+
+        .cell {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 8px;
+            background: #0f3460;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s;
+        }
+
+        .cell:hover { transform: scale(1.05); }
+        .controls { background: #0f3460; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        input[type="file"] { color: white; }
     </style>
 </head>
 <body>
-    <h2>Memory Game Pair Finder || <a href="index.html">Steps Game Memory</a></h2>
-    <input type="file" id="fileInput" accept="image/*">
-    <canvas id="canvasInput" style="display:none;"></canvas>
+
+    <h2>Memory Game Solver</h2>
     
-    <div id="results">
-        <h3>Detected Pairs:</h3>
-        <ul id="pairList"></ul>
-        <div id="output-grid"></div>
+    <div class="controls">
+        <input type="file" id="fileInput" accept="image/*">
+        <p><small>Upload screenshot to see matching grid</small></p>
     </div>
 
+    <div id="grid-container">
+        </div>
+
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const pairList = document.getElementById('pairList');
-        const gridContainer = document.getElementById('output-grid');
+        const gridContainer = document.getElementById('grid-container');
+        const colors = [
+            '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FF33A1', 
+            '#33FFF5', '#F5FF33', '#FF8333', '#8333FF', '#33FF83',
+            '#FF3333', '#33A1FF', '#A1FF33', '#FF33F5' // 14 colors for 14 pairs
+        ];
+
+        // Initialize empty grid
+        for(let i=0; i<28; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `cell-${i}`;
+            cell.innerText = '?';
+            gridContainer.appendChild(cell);
+        }
 
         fileInput.onchange = (e) => {
             const reader = new FileReader();
@@ -40,12 +81,18 @@
         function processImage(imgElement) {
             let src = cv.imread(imgElement);
             let cells = [];
+            
+            // Grid sizing logic
             const rows = 7;
             const cols = 4;
             
-            // Define the game board area (Crop out headers/footers)
-            // In your image, the grid starts roughly 15% from top and ends 10% from bottom
-            let rect = new cv.Rect(50, 150, src.cols - 100, src.rows - 300);
+            // Adjust these values if your screenshot has different headers
+            let startY = src.rows * 0.15; 
+            let height = src.rows * 0.75;
+            let startX = src.cols * 0.05;
+            let width = src.cols * 0.9;
+
+            let rect = new cv.Rect(startX, startY, width, height);
             let board = src.roi(rect);
 
             let cellW = board.cols / cols;
@@ -57,50 +104,46 @@
                     cells.push(board.roi(cellRect));
                 }
             }
-
-            findMatches(cells);
+            findPairs(cells);
         }
 
-        function findMatches(cells) {
-            let pairs = [];
-            let matched = new Set();
+        function findPairs(cells) {
+            let matched = new Array(28).fill(null);
+            let pairId = 1;
 
-            for (let i = 0; i < cells.length; i++) {
-                if (matched.has(i)) continue;
-                for (let j = i + 1; j < cells.length; j++) {
-                    if (matched.has(j)) continue;
+            for (let i = 0; i < 28; i++) {
+                if (matched[i] !== null) continue;
+                
+                for (let j = i + 1; j < 28; j++) {
+                    if (matched[j] !== null) continue;
 
-                    // Simple Template Matching / MSE
-                    if (isMatch(cells[i], cells[j])) {
-                        pairs.push([i + 1, j + 1]);
-                        matched.add(i);
-                        matched.add(j);
+                    if (compareCells(cells[i], cells[j])) {
+                        matched[i] = pairId;
+                        matched[j] = pairId;
+                        updateCellUI(i, pairId);
+                        updateCellUI(j, pairId);
+                        pairId++;
                         break;
                     }
                 }
             }
-            displayResults(pairs);
         }
 
-        function isMatch(img1, img2) {
-            // Logic: Compare histograms or Mean Square Error
+        function compareCells(img1, img2) {
             let diff = new cv.Mat();
             cv.absdiff(img1, img2, diff);
-            let grey = new cv.Mat();
-            cv.cvtColor(diff, grey, cv.COLOR_RGBA2GRAY);
-            let mean = cv.mean(grey)[0];
-            
-            diff.delete(); grey.delete();
-            return mean < 20; // Sensitivity threshold
+            cv.cvtColor(diff, diff, cv.COLOR_RGBA2GRAY);
+            let mean = cv.mean(diff)[0];
+            diff.delete();
+            return mean < 25; // Sensitivity threshold
         }
 
-        function displayResults(pairs) {
-            pairList.innerHTML = "";
-            pairs.forEach((pair, idx) => {
-                let li = document.createElement('li');
-                li.innerText = `Step ${idx + 1}: Match found at Cell ${pair[0]} and Cell ${pair[1]}`;
-                pairList.appendChild(li);
-            });
+        function updateCellUI(index, pairId) {
+            const cell = document.getElementById(`cell-${index}`);
+            cell.innerText = pairId;
+            cell.style.color = 'white';
+            cell.style.backgroundColor = colors[pairId - 1] || '#444';
+            cell.style.borderColor = 'white';
         }
     </script>
 </body>
