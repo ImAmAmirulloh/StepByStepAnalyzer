@@ -2,148 +2,142 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memory Solver Grid</title>
+    <title>Memory Solver + Debug View</title>
     <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; }
+        body { font-family: system-ui; background: var(--bg); color: white; text-align: center; padding: 20px; }
         
+        /* Main Result Grid */
         #grid-container { 
-            display: grid; 
-            grid-template-columns: repeat(4, 70px); 
-            grid-template-rows: repeat(7, 70px); 
-            gap: 8px; 
-            margin-top: 20px;
-            background: #16213e;
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid #0f3460;
+            display: grid; grid-template-columns: repeat(4, 75px); 
+            gap: 10px; justify-content: center; margin: 20px auto;
+            padding: 20px; background: var(--card); border-radius: 12px; width: fit-content;
         }
-
         .cell {
-            width: 70px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-radius: 8px;
-            background: #0f3460;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.2s;
+            width: 75px; height: 75px; display: flex; align-items: center;
+            justify-content: center; font-size: 28px; font-weight: 800;
+            border-radius: 8px; background: #334155; border: 2px solid transparent;
         }
 
-        .cell:hover { transform: scale(1.05); }
-        .controls { background: #0f3460; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        input[type="file"] { color: white; }
+        /* Debug Section */
+        #debug-section { margin-top: 40px; border-top: 1px solid #334155; padding-top: 20px; }
+        .debug-canvas-grid { 
+            display: grid; grid-template-columns: repeat(7, 1fr); 
+            gap: 5px; margin-top: 10px; justify-items: center;
+        }
+        canvas { border: 1px solid var(--accent); max-width: 100%; height: auto; }
+        .debug-label { font-size: 10px; color: var(--accent); }
     </style>
 </head>
 <body>
 
-    <h2>Memory Game Solver</h2>
-    
-    <div class="controls">
-        <input type="file" id="fileInput" accept="image/*">
-        <p><small>Upload screenshot to see matching grid</small></p>
+    <h1>Memory Solver</h1>
+    <input type="file" id="fileInput" accept="image/*">
+
+    <div id="grid-container"></div>
+
+    <div id="debug-section">
+        <h3>Debug: Image Slices</h3>
+        <p>This shows exactly what the AI is comparing:</p>
+        <div id="debug-output" class="debug-canvas-grid"></div>
     </div>
 
-    <div id="grid-container">
-        </div>
-
     <script>
-        const gridContainer = document.getElementById('grid-container');
-        const colors = [
-            '#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FF33A1', 
-            '#33FFF5', '#F5FF33', '#FF8333', '#8333FF', '#33FF83',
-            '#FF3333', '#33A1FF', '#A1FF33', '#FF33F5' // 14 colors for 14 pairs
-        ];
+        const colors = ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#a855f7', '#ec4899', '#06b6d4', '#f97316', '#10b981', '#6366f1', '#f43f5e', '#8b5cf6', '#d946ef', '#14b8a6'];
 
-        // Initialize empty grid
+        // Initialize empty result grid
+        const grid = document.getElementById('grid-container');
         for(let i=0; i<28; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.id = `cell-${i}`;
-            cell.innerText = '?';
-            gridContainer.appendChild(cell);
+            let div = document.createElement('div');
+            div.className = 'cell';
+            div.id = `res-${i}`;
+            div.innerText = '?';
+            grid.appendChild(div);
         }
 
-        fileInput.onchange = (e) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => processImage(img);
-                img.src = event.target.result;
+        document.getElementById('fileInput').onchange = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let src = cv.imread(img);
+                process(src);
             };
-            reader.readAsDataURL(e.target.files[0]);
+            img.src = URL.createObjectURL(e.target.files[0]);
         };
 
-        function processImage(imgElement) {
-            let src = cv.imread(imgElement);
+        function process(src) {
+            const debugOutput = document.getElementById('debug-output');
+            debugOutput.innerHTML = ""; // Clear old debug
+            
+            // 1. Precise Crop based on your image layout
+            // Adjusted to remove the "Ranking stage" and "Forfeit" areas
+            let x = src.cols * 0.1;
+            let y = src.rows * 0.12;
+            let w = src.cols * 0.8;
+            let h = src.rows * 0.76;
+            let board = src.roi(new cv.Rect(x, y, w, h));
+
+            let cellW = board.cols / 4;
+            let cellH = board.rows / 7;
             let cells = [];
-            
-            // Grid sizing logic
-            const rows = 7;
-            const cols = 4;
-            
-            // Adjust these values if your screenshot has different headers
-            let startY = src.rows * 0.15; 
-            let height = src.rows * 0.75;
-            let startX = src.cols * 0.05;
-            let width = src.cols * 0.9;
 
-            let rect = new cv.Rect(startX, startY, width, height);
-            let board = src.roi(rect);
+            for (let i = 0; i < 28; i++) {
+                let row = Math.floor(i / 4);
+                let col = i % 4;
+                let rect = new cv.Rect(col * cellW, row * cellH, cellW, cellH);
+                let cellMat = board.roi(rect);
+                cells.push(cellMat);
 
-            let cellW = board.cols / cols;
-            let cellH = board.rows / rows;
-
-            for (let i = 0; i < rows; i++) {
-                for (let j = 0; j < cols; j++) {
-                    let cellRect = new cv.Rect(j * cellW, i * cellH, cellW, cellH);
-                    cells.push(board.roi(cellRect));
-                }
+                // --- SHOW DEBUG IMAGE ---
+                let container = document.createElement('div');
+                let canvas = document.createElement('canvas');
+                let label = document.createElement('div');
+                label.className = 'debug-label';
+                label.innerText = `ID: ${i}`;
+                cv.imshow(canvas, cellMat);
+                container.appendChild(canvas);
+                container.appendChild(label);
+                debugOutput.appendChild(container);
             }
+
             findPairs(cells);
         }
 
         function findPairs(cells) {
-            let matched = new Array(28).fill(null);
-            let pairId = 1;
+            let matched = new Array(28).fill(false);
+            let pairCount = 0;
 
             for (let i = 0; i < 28; i++) {
-                if (matched[i] !== null) continue;
-                
+                if (matched[i]) continue;
                 for (let j = i + 1; j < 28; j++) {
-                    if (matched[j] !== null) continue;
+                    if (matched[j]) continue;
 
-                    if (compareCells(cells[i], cells[j])) {
-                        matched[i] = pairId;
-                        matched[j] = pairId;
-                        updateCellUI(i, pairId);
-                        updateCellUI(j, pairId);
-                        pairId++;
+                    if (compare(cells[i], cells[j])) {
+                        pairCount++;
+                        mark(i, j, pairCount);
+                        matched[i] = matched[j] = true;
                         break;
                     }
                 }
             }
         }
 
-        function compareCells(img1, img2) {
+        function compare(m1, m2) {
             let diff = new cv.Mat();
-            cv.absdiff(img1, img2, diff);
+            cv.absdiff(m1, m2, diff);
             cv.cvtColor(diff, diff, cv.COLOR_RGBA2GRAY);
-            let mean = cv.mean(diff)[0];
+            let score = cv.mean(diff)[0];
             diff.delete();
-            return mean < 25; // Sensitivity threshold
+            return score < 30; // Threshold: smaller is stricter
         }
 
-        function updateCellUI(index, pairId) {
-            const cell = document.getElementById(`cell-${index}`);
-            cell.innerText = pairId;
-            cell.style.color = 'white';
-            cell.style.backgroundColor = colors[pairId - 1] || '#444';
-            cell.style.borderColor = 'white';
+        function mark(idx1, idx2, pairId) {
+            [idx1, idx2].forEach(id => {
+                let el = document.getElementById(`res-${id}`);
+                el.innerText = pairId;
+                el.style.backgroundColor = colors[(pairId - 1) % colors.length];
+                el.style.borderColor = 'white';
+            });
         }
     </script>
 </body>
