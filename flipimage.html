@@ -48,7 +48,8 @@
     <h2>Same Image Flip || <a href="index.html">Memory Pattern Recorder V3</a></h2>
     <div id="status">Loading AI Engine...</div>
 
-    <input type="file" id="fileInput" accept="image/*" style="width:100%; margin-bottom:15px;"><input type="reset">
+    <input type="file" id="fileInput" accept="image/*" style="width:100%; margin-bottom:15px;">
+    <button id="btnReset" style="background: #ff7675;">🔄 Reset</button>
 
     <div class="preview-container">
         <img id="imgPreview" src="">
@@ -286,6 +287,47 @@ function loadSliderSettings() {
             }
         });
     }
+}
+
+    // --- RESET FUNCTION ---
+document.getElementById('btnReset').onclick = () => {
+    if (confirm("Reset all margins and timing to default?")) {
+        // 1. Clear LocalStorage
+        localStorage.removeItem('memoryAnalyzerSettings');
+
+        // 2. Reset Sliders to their original HTML 'value' attribute
+        const sliders = document.querySelectorAll('input[type="range"]');
+        sliders.forEach(slider => {
+            // Use the default value defined in the HTML tag
+            slider.value = slider.getAttribute('value');
+            
+            // Trigger visual update for the grid lines
+            slider.dispatchEvent(new Event('input'));
+        });
+
+        alert("Settings cleared.");
+    }
+};
+
+// --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
+// Modern browsers require a user gesture (like a click) to download.
+// Since our btnDownload.onclick is a user gesture, it should work.
+// But we add this check to ensure the URL is clean.
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    
+    // Append to body to ensure it works on all mobile browsers
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
 }
     
 document.getElementById('btnDownload').onclick = () => {
