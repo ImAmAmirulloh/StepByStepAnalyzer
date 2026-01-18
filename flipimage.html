@@ -291,8 +291,23 @@ function loadSliderSettings() {
 
     // --- RESET FUNCTION ---
 document.getElementById('btnReset').onclick = () => {
-    const fileInput = document.getElementById('fileInput'); // ensure your input has this ID
-        if(fileInput) fileInput.value = "";
+    mediaSource = null;
+        detectedSteps = [];
+        
+        // D. Reset File Input (allows re-uploading the same file)
+        const fileInput = document.getElementById('fileInput'); // ensure your input has this ID
+        if(fileInput) fileInput.value = ""; 
+
+        // E. Clear Visual Grids
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.className = 'cell';
+            cell.innerHTML = '';
+            cell.style.backgroundColor = "";
+        });
+
+        // F. Disable buttons until new image is uploaded
+        document.getElementById('btnStartSequence').disabled = true;
+        document.getElementById('btnFindPairs').disabled = true;
 };
 
 // --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
