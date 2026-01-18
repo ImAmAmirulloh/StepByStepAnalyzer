@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Sudoku Precision Scanner</title>
+    <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <style>
+        :root { --primary: #00bcd4; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        
+        .main-layout { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1200px; }
+        
+        /* LEFT: SCANNER AREA */
+        .scanner-area { flex: 1; min-width: 400px; display: flex; flex-direction: column; align-items: center; }
+        .preview-container { position: relative; background: #000; padding: 5px; border-radius: 8px; line-height: 0; }
+        #imageCanvas { max-width: 100%; height: auto; border-radius: 4px; }
+        .overlay-canvas { position: absolute; top: 5px; left: 5px; pointer-events: none; }
+        
+        .slider-group { width: 100%; background: white; padding: 20px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .slider-item { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        .slider-item label { width: 80px; font-size: 13px; font-weight: bold; color: #444; }
+        input[type="range"] { flex: 1; accent-color: var(--primary); }
+
+        /* RIGHT: GRID AREA */
+        .grid-area { flex: 0.8; display: flex; flex-direction: column; align-items: center; }
+        .sudoku-board { border: 4px solid #333; background: white; padding: 2px; }
+        .grid { display: grid; grid-template-columns: repeat(9, 45px); grid-template-rows: repeat(9, 45px); }
+        .cell { width: 45px; height: 45px; text-align: center; font-size: 22px; border: 1px solid #ddd; outline: none; font-weight: bold; }
+        .cell:nth-child(3n) { border-right: 3px solid #333; }
+        .cell:nth-child(9n) { border-right: 1px solid #ddd; }
+        .thick-bot { border-bottom: 3px solid #333 !important; }
+        .solved { color: #2ecc71; font-weight: normal; }
+
+        .controls { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        button { padding: 12px 24px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-up { background: #3498db; }
+        .btn-scan { background: var(--primary); }
+        .btn-solve { background: #2ecc71; }
+        .btn-reset { background: #e74c3c; }
+
+        #status { margin: 15px; font-weight: bold; color: #2c3e50; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Sudoku Smart Scanner || 
+        <a href="index.html">Memory Pattern Recorder V3</a> || 
+        <a href="flipimage.html">Same Image Flip</a>
+    </h1>
+
+    <div class="main-layout">
+        <div class="scanner-area">
+            <div class="preview-container">
+                <canvas id="imageCanvas"></canvas>
+                <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
+            </div>
+            
+            <div class="slider-group">
+                <div class="slider-item">
+                    <label>TOP</label>
+                    <input type="range" id="sTop" min="0" max="100" value="20">
+                </div>
+                <div class="slider-item">
+                    <label>BOTTOM</label>
+                    <input type="range" id="sBottom" min="0" max="100" value="80">
+                </div>
+                <div class="slider-item">
+                    <label>SIDES</label>
+                    <input type="range" id="sSides" min="0" max="100" value="10">
+                </div>
+                <button class="btn-scan" style="width:100%" onclick="runSmartOCR()">🔍 SMART SCAN NUMBERS</button>
+            </div>
+        </div>
+
+        <div class="grid-area">
+            <div class="sudoku-board">
+                <div id="grid" class="grid"></div>
+            </div>
+            <div class="controls">
+                <input type="file" id="imgInput" accept="image/*" style="display:none">
+                <button class="btn-up" onclick="document.getElementById('imgInput').click()">📸 UPLOAD IMAGE</button>
+                <button class="btn-solve" onclick="solveGame()">⚡ SOLVE</button>
+                <button class="btn-reset" onclick="resetEverything()">🔄 RESET ALL</button>
+            </div>
+            <div id="status">Upload an image to begin.</div>
+        </div>
+    </div>
+
+    <canvas id="processCanvas" style="display:none;"></canvas>
+
+    <script async src="https://docs.opencv.org/4.7.0/opencv.js" onload="cvReady=true"></script>
+    <script>
+        let cvReady = false;
+        let originalImg = null;
+        const cells = [];
+        const gridEl = document.getElementById('grid');
+
+        // Initialize Grid
+        for(let i=0; i<81; i++){
+            let inp = document.createElement('input');
+            inp.className = 'cell'; inp.maxLength = 1;
+            if(Math.floor(i/9)===2 || Math.floor(i/9)===5) inp.classList.add('thick-bot');
+            gridEl.appendChild(inp); cells.push(inp);
+        }
+
+        const imgCanvas = document.getElementById('imageCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = imgCanvas.getContext('2d');
+        const octx = overlayCanvas.getContext('2d');
+
+        // Load saved slider settings
+        window.onload = () => {
+            const saved = localStorage.getItem('sudokuScannerSettings');
+            if(saved) {
+                const s = JSON.parse(saved);
+                ['sTop', 'sBottom', 'sSides'].forEach(id => {
+                    document.getElementById(id).value = s[id];
+                });
+            }
+        };
+
+        function saveSettings() {
+            const settings = {};
+            ['sTop', 'sBottom', 'sSides'].forEach(id => settings[id] = document.getElementById(id).value);
+            localStorage.setItem('sudokuScannerSettings', JSON.stringify(settings));
+        }
+
+        document.getElementById('imgInput').onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                originalImg = new Image();
+                originalImg.onload = () => {
+                    imgCanvas.width = 400;
+                    imgCanvas.height = (originalImg.height / originalImg.width) * 400;
+                    overlayCanvas.width = imgCanvas.width;
+                    overlayCanvas.height = imgCanvas.height;
+                    drawOverlay();
+                };
+                originalImg.src = event.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        };
+
+        ['sTop', 'sBottom', 'sSides'].forEach(id => {
+            document.getElementById(id).oninput = () => { drawOverlay(); saveSettings(); };
+        });
+
+        function drawOverlay() {
+            if(!originalImg) return;
+            ctx.drawImage(originalImg, 0, 0, imgCanvas.width, imgCanvas.height);
+            const t = document.getElementById('sTop').value / 100 * imgCanvas.height;
+            const b = document.getElementById('sBottom').value / 100 * imgCanvas.height;
+            const s = document.getElementById('sSides').value / 100 * imgCanvas.width;
+            octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+            octx.strokeStyle = '#00ffff'; octx.lineWidth = 3;
+            octx.strokeRect(s, t, imgCanvas.width - (s*2), b - t);
+        }
+
+        // SMART OCR LOGIC
+        async function runSmartOCR() {
+            if(!cvReady || !originalImg) return alert("System not ready.");
+            document.getElementById('status').innerText = "🤖 Normalizing Unique Font...";
+            
+            let src = cv.imread(originalImg);
+            let gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+            // Warp based on slider positions
+            const tY = document.getElementById('sTop').value / 100 * src.rows;
+            const bY = document.getElementById('sBottom').value / 100 * src.rows;
+            const sX = document.getElementById('sSides').value / 100 * src.cols;
+            const w = src.cols - (sX * 2);
+
+            let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [sX, tY, sX+w, tY, sX+w, bY, sX, bY]);
+            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0,0, 450,0, 450,450, 0,450]);
+            let M = cv.getPerspectiveTransform(srcTri, dstTri);
+            let warped = new cv.Mat();
+            cv.warpPerspective(gray, warped, M, new cv.Size(450, 450));
+
+            const worker = await Tesseract.createWorker();
+            await worker.loadLanguage('eng');
+            await worker.initialize('eng');
+            await worker.setParameters({ tessedit_char_whitelist: '123456789', tessedit_pageseg_mode: '10' });
+
+            const cellSize = 50;
+            for(let r=0; r<9; r++) {
+                for(let c=0; c<9; c++) {
+                    let rect = new cv.Rect(c*cellSize+6, r*cellSize+6, cellSize-12, cellSize-12);
+                    let cell = warped.roi(rect);
+                    
+                    // SMART PRE-PROCESS:
+                    let bin = new cv.Mat();
+                    cv.threshold(cell, bin, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+                    
+                    // Find Largest Object (Isolate number from grid lines)
+                    let labels = new cv.Mat(), stats = new cv.Mat(), cents = new cv.Mat();
+                    let n = cv.connectedComponentsWithStats(bin, labels, stats, cents);
+                    let maxA = 0, best = -1;
+                    for(let i=1; i<n; i++) {
+                        let a = stats.intAt(i, cv.CC_STAT_AREA);
+                        if(a > 20 && a > maxA) { maxA = a; best = i; }
+                    }
+
+                    if(best !== -1) {
+                        // Create a mask for only the digit
+                        let mask = new cv.Mat.zeros(bin.rows, bin.cols, cv.CV_8U);
+                        for(let i=0; i<bin.rows; i++) {
+                            for(let j=0; j<bin.cols; j++) { if(labels.intAt(i,j) === best) mask.ucharPtr(i,j)[0] = 255; }
+                        }
+                        
+                        // Normalize: Center in 100x100 white square
+                        let bRect = cv.boundingRect(mask);
+                        let digit = mask.roi(bRect);
+                        let final = new cv.Mat.ones(100, 100, cv.CV_8U); final.setTo(new cv.Scalar(255));
+                        let scale = 70 / Math.max(bRect.width, bRect.height);
+                        let rsz = new cv.Mat();
+                        cv.resize(digit, rsz, new cv.Size(0,0), scale, scale, cv.INTER_AREA);
+                        cv.bitwise_not(rsz, rsz); // Black text on White background
+                        rsz.copyTo(final.roi(new cv.Rect((100-rsz.cols)/2, (100-rsz.rows)/2, rsz.cols, rsz.rows)));
+
+                        cv.imshow('processCanvas', final);
+                        const { data: { text, confidence } } = await worker.recognize(document.getElementById('processCanvas'));
+                        if(confidence > 40 && /^[1-9]$/.test(text.trim())) cells[r*9+c].value = text.trim();
+                        
+                        mask.delete(); digit.delete(); rsz.delete(); final.delete();
+                    }
+                    cell.delete(); bin.delete(); labels.delete(); stats.delete(); cents.delete();
+                }
+            }
+            await worker.terminate();
+            src.delete(); gray.delete(); warped.delete(); srcTri.delete(); dstTri.delete(); M.delete();
+            document.getElementById('status').innerText = "Scan Finished!";
+        }
+
+        // Solver Logic
+        function solveGame() {
+            let b = cells.map(c => c.value ? parseInt(c.value) : 0);
+            if(solve(b)) {
+                b.forEach((v, i) => { if(!cells[i].value) { cells[i].value = v; cells[i].classList.add('solved'); } });
+                document.getElementById('status').innerText = "🎉 Solved!";
+            } else { document.getElementById('status').innerText = "❌ Unsolvable!"; }
+        }
+
+        function solve(b) {
+            for(let i=0; i<81; i++) {
+                if(b[i]===0) {
+                    for(let n=1; n<=9; n++){
+                        if(isValid(b, i, n)){ b[i]=n; if(solve(b)) return true; b[i]=0; }
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function isValid(b, idx, n) {
+            let r=Math.floor(idx/9), c=idx%9;
+            for(let i=0; i<9; i++) {
+                if(b[r*9+i]===n || b[i*9+c]===n) return false;
+                let br=3*Math.floor(r/3)+Math.floor(i/3), bc=3*Math.floor(c/3)+i%3;
+                if(b[br*9+bc]===n) return false;
+            }
+            return true;
+        }
+
+        function resetEverything() {
+            cells.forEach(c => { c.value=''; c.classList.remove('solved'); });
+            ctx.clearRect(0,0,imgCanvas.width, imgCanvas.height);
+            octx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
+            originalImg = null;
+            document.getElementById('status').innerText = "Reset complete.";
+        }
+    </script>
+</body>
+</html>
