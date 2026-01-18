@@ -362,7 +362,9 @@ document.getElementById('btnDownload').onclick = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Memory_4x7_Precision.json';
+    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
+    a.download = `Memory_4x7_${timestamp}.json`;
+    // a.download = 'Memory_4x7_Precision.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
