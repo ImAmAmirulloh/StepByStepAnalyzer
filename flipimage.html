@@ -48,8 +48,8 @@
     <h2>Same Image Flip || <a href="index.html">Memory Pattern Recorder V3</a></h2>
     <div id="status">Loading AI Engine...</div>
 
-    <input type="file" id="fileInput" accept="image/*" style="width:100%; margin-bottom:15px;">
-    <button id="btnReset" style="background: #ff7675;">🔄 Reset</button>
+    <input type="file" id="fileInput" class="action-btn" accept="image/*" style="width:100%; margin-bottom:15px;">
+    <p>You don't need to refresh the browser, just upload the new file directly.</p>
 
     <div class="preview-container">
         <img id="imgPreview" src="">
@@ -288,51 +288,9 @@ function loadSliderSettings() {
         });
     }
 }
-
-    // --- RESET FUNCTION ---
-document.getElementById('btnReset').onclick = () => {
-    mediaSource = null;
-        detectedSteps = [];
-        
-        // D. Reset File Input (allows re-uploading the same file)
-        const fileInput = document.getElementById('fileInput'); // ensure your input has this ID
-        if(fileInput) fileInput.value = ""; 
-
-        // E. Clear Visual Grids
-        document.querySelectorAll('.cell').forEach(cell => {
-            cell.className = 'cell';
-            cell.innerHTML = '';
-            cell.style.backgroundColor = "";
-        });
-
-        // F. Disable buttons until new image is uploaded
-        document.getElementById('btnStartSequence').disabled = true;
-        document.getElementById('btnFindPairs').disabled = true;
-};
-
-// --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
-// Modern browsers require a user gesture (like a click) to download.
-// Since our btnDownload.onclick is a user gesture, it should work.
-// But we add this check to ensure the URL is clean.
-function triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    
-    // Append to body to ensure it works on all mobile browsers
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
     
 document.getElementById('btnDownload').onclick = () => {
-    // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
+// 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
     // Assumes s.step is a number (1, 1.5, 2, 2.5) or you can map 1b to 1.5 for sorting
     detectedSteps.sort((a, b) => a.step - b.step);
 
@@ -407,6 +365,27 @@ document.getElementById('btnDownload').onclick = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 };
+    
+// --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
+// Modern browsers require a user gesture (like a click) to download.
+// Since our btnDownload.onclick is a user gesture, it should work.
+// But we add this check to ensure the URL is clean.
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    
+    // Append to body to ensure it works on all mobile browsers
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
 </script>
 </body>
 </html>
