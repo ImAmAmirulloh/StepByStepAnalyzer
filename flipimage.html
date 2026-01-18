@@ -291,22 +291,8 @@ function loadSliderSettings() {
 
     // --- RESET FUNCTION ---
 document.getElementById('btnReset').onclick = () => {
-    if (confirm("Reset all margins and timing to default?")) {
-        // 1. Clear LocalStorage
-        localStorage.removeItem('memoryAnalyzerSettings');
-
-        // 2. Reset Sliders to their original HTML 'value' attribute
-        const sliders = document.querySelectorAll('input[type="range"]');
-        sliders.forEach(slider => {
-            // Use the default value defined in the HTML tag
-            slider.value = slider.getAttribute('value');
-            
-            // Trigger visual update for the grid lines
-            slider.dispatchEvent(new Event('input'));
-        });
-
-        alert("Settings cleared.");
-    }
+    const fileInput = document.getElementById('fileInput'); // ensure your input has this ID
+        if(fileInput) fileInput.value = "";
 };
 
 // --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
