@@ -1024,12 +1024,13 @@ document.getElementById('processBtn').onclick = async () => {
   processFrame();
 };
 
+const targetWidth = Math.round(screen.width * window.devicePixelRatio); //2400;  // ganti sesuai resolusi clicker
+const targetHeight = Math.round(screen.height * window.devicePixelRatio); //1080;
+console.log(`Target Clicker Resolution: ${targetWidth}x${targetHeight}`);
 // Download logic unchanged
 document.getElementById('btnDownload').onclick = () => {
   const steps = zones.filter(z => z.locked).sort((a, b) => a.step - b.step);
 
-  const targetWidth = Math.round(screen.width * window.devicePixelRatio); //2400;  // ganti sesuai resolusi clicker
-  const targetHeight = Math.round(screen.height * window.devicePixelRatio); //1080;
   
   const actionList = steps.map(s => {
     const normX = s.fixedX / videoPlayer.videoWidth;
