@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video Pattern Recorder - Precision Mode</title>
+    <title>Video Pattern Recorder - Margin Precision</title>
     <style>
         :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
         body { 
@@ -34,7 +34,7 @@
         .nav-header a:hover { color: var(--primary); }
         .nav-header .active { color: var(--primary); font-weight: bold; font-size: 1.1rem; }
 
-        /* Video Preview */
+        /* Preview */
         .preview-wrapper { 
             position: relative; 
             width: 100%; 
@@ -48,28 +48,25 @@
         #videoPlayer { width: 100%; display: block; }
         #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-        /* Precision Control Panel (Matches flipimage.html) */
+        /* Controls */
         .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
-        .slider-row { margin-bottom: 15px; }
-        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .slider-row { margin-bottom: 12px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
         .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
         input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
-        .slider-desc { font-size: 0.65rem; color: #999; margin: 4px 0 0 0; }
-
+        
         .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
         .btn-start { background: var(--primary); }
         .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
         .btn-download { background: var(--success); margin-top: 15px; display: none; }
         
-        /* Grid Results */
         .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; width: 100%; }
         .cell { aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #bdc3c7; }
         .cell.detected { background: white; border: 2px solid var(--danger); color: var(--danger); }
 
         #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
 
-        /* File Input */
         #videoInput { margin-bottom: 15px; width: 100%; }
         input[type="file"]::file-selector-button {
             background-color: var(--primary); color: white; border: none; padding: 8px 12px;
@@ -87,7 +84,7 @@
             <span class="active">Memory Pattern Recorder V3</span> || 
             <a href="sudokusolver.html">Sudoku Solver</a>
         </h2>
-        <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Use precision sliders to align yellow dots</div>
+        <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Adjust margins until green boxes match cards</div>
     </div>
 
     <input type="file" id="videoInput" accept="video/*">
@@ -99,14 +96,16 @@
 
     <div class="control-panel">
         <div class="slider-row">
-            <div class="slider-header"><label>VERTICAL SHIFT (Y)</label><span class="val-badge" id="v-y">0.0</span></div>
-            <input type="range" id="shiftY" min="-200" max="200" step="0.1" value="0">
-            <p class="slider-desc">Fine-tune vertical alignment (Decimal precision enabled)</p>
+            <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
+            <input type="range" id="marginTop" min="0" max="60" step="0.1" value="23.0">
         </div>
         <div class="slider-row">
-            <div class="slider-header"><label>HORIZONTAL SHIFT (X)</label><span class="val-badge" id="v-x">0.0</span></div>
-            <input type="range" id="shiftX" min="-100" max="100" step="0.1" value="0">
-            <p class="slider-desc">Fine-tune horizontal alignment (Decimal precision enabled)</p>
+            <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
+            <input type="range" id="marginBottom" min="0" max="60" step="0.1" value="15.0">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
+            <input type="range" id="marginSide" min="0" max="40" step="0.1" value="5.0">
         </div>
         <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
     </div>
@@ -123,16 +122,7 @@ let cvReady = false;
 let zones = []; 
 let currentStep = 1;
 
-// EXACT PRECISION COORDINATES FROM JSON
-const BASE_COORDS = [
-    {x: 170, y: 845}, {x: 480, y: 845}, {x: 790, y: 845}, {x: 1100, y: 845},
-    {x: 170, y: 1145}, {x: 480, y: 1145}, {x: 790, y: 1145}, {x: 1100, y: 1145},
-    {x: 170, y: 1445}, {x: 480, y: 1445}, {x: 790, y: 1445}, {x: 1100, y: 1445},
-    {x: 170, y: 1745}, {x: 480, y: 1745}, {x: 790, y: 1745}, {x: 1100, y: 1745},
-    {x: 170, y: 2045}, {x: 480, y: 2045}, {x: 790, y: 2045}, {x: 1100, y: 2045}
-];
-
-// Initialize Grid UI
+// Initialize Grid UI (20 Cells for 4x5)
 const gridEl = document.getElementById('grid');
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
@@ -161,37 +151,41 @@ function onOpenCvReady() {
 
 function saveSliderSettings() {
     const settings = {
-        shiftX: document.getElementById('shiftX').value,
-        shiftY: document.getElementById('shiftY').value
+        top: document.getElementById('marginTop').value,
+        bottom: document.getElementById('marginBottom').value,
+        side: document.getElementById('marginSide').value
     };
-    localStorage.setItem('videoRecorderSettings_v2', JSON.stringify(settings));
+    localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
 }
 
 function loadSliderSettings() {
-    const saved = localStorage.getItem('videoRecorderSettings_v2');
+    const saved = localStorage.getItem('patternRecorderMargins');
     if (saved) {
         const settings = JSON.parse(saved);
-        if(settings.shiftX) {
-            document.getElementById('shiftX').value = settings.shiftX;
-            document.getElementById('v-x').innerText = parseFloat(settings.shiftX).toFixed(1);
+        if(settings.top) {
+            document.getElementById('marginTop').value = settings.top;
+            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
         }
-        if(settings.shiftY) {
-            document.getElementById('shiftY').value = settings.shiftY;
-            document.getElementById('v-y').innerText = parseFloat(settings.shiftY).toFixed(1);
+        if(settings.bottom) {
+            document.getElementById('marginBottom').value = settings.bottom;
+            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
+        }
+        if(settings.side) {
+            document.getElementById('marginSide').value = settings.side;
+            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
         }
     }
 }
 
 // Sliders listener
-document.getElementById('shiftY').addEventListener('input', (e) => {
-    document.getElementById('v-y').innerText = parseFloat(e.target.value).toFixed(1);
-    saveSliderSettings();
-    drawOverlay();
-});
-document.getElementById('shiftX').addEventListener('input', (e) => {
-    document.getElementById('v-x').innerText = parseFloat(e.target.value).toFixed(1);
-    saveSliderSettings();
-    drawOverlay();
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+        // Update badge text
+        const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+        document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+        saveSliderSettings();
+        drawOverlay();
+    });
 });
 
 document.getElementById('videoInput').addEventListener('change', (e) => {
@@ -208,34 +202,65 @@ document.getElementById('videoInput').addEventListener('change', (e) => {
     }
 });
 
-function getCurrentCoords() {
-    // Parse Float for precision
-    const ox = parseFloat(document.getElementById('shiftX').value);
-    const oy = parseFloat(document.getElementById('shiftY').value);
+function getCalculatedZones() {
+    if(overlayCanvas.width === 0) return [];
     
-    // Map base coords to shifted coords
-    return BASE_COORDS.map(p => ({
-        x: p.x + ox,
-        y: p.y + oy,
-        baseX: p.x, 
-        baseY: p.y
-    }));
+    const w = overlayCanvas.width;
+    const h = overlayCanvas.height;
+    
+    // Get margin percentages
+    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+    
+    // Calculate Grid Area
+    const startX = w * sPct;
+    const endX = w * (1 - sPct);
+    const startY = h * tPct;
+    const endY = h * (1 - bPct);
+    
+    const gridW = endX - startX;
+    const gridH = endY - startY;
+    
+    // 4 Columns, 5 Rows
+    const cellW = gridW / 4;
+    const cellH = gridH / 5;
+    
+    let calculatedZones = [];
+    
+    for(let r=0; r<5; r++) {
+        for(let c=0; c<4; c++) {
+            const zx = startX + (c * cellW);
+            const zy = startY + (r * cellH);
+            const cx = Math.floor(zx + cellW/2);
+            const cy = Math.floor(zy + cellH/2);
+            
+            calculatedZones.push({
+                x: zx, y: zy, w: cellW, h: cellH,
+                cx: cx, cy: cy
+            });
+        }
+    }
+    return calculatedZones;
 }
 
 function drawOverlay() {
     if(overlayCanvas.width === 0) return;
     overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
-    const coords = getCurrentCoords();
-    coords.forEach(c => {
-        // Draw box
-        overlayCtx.strokeStyle = "rgba(0, 255, 255, 0.5)";
-        overlayCtx.lineWidth = 2; // Thinner line for precision feel
-        overlayCtx.strokeRect(c.x - 60, c.y - 60, 120, 120);
+    
+    const zones = getCalculatedZones();
+    
+    overlayCtx.strokeStyle = "#00bcd4"; // Cyan
+    overlayCtx.lineWidth = 3;
+    
+    zones.forEach(z => {
+        // Draw the full cell box
+        overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
         
-        // Draw center dot
+        // Draw center dot (target)
         overlayCtx.fillStyle = "yellow";
         overlayCtx.beginPath();
-        overlayCtx.arc(c.x, c.y, 4, 0, Math.PI * 2); // Smaller dot for precision
+        overlayCtx.arc(z.cx, z.cy, 5, 0, Math.PI * 2);
         overlayCtx.fill();
     });
 }
@@ -249,14 +274,15 @@ document.getElementById('processBtn').onclick = async () => {
         c.innerText = c.id.replace('c-', '') * 1 + 1; 
     });
 
-    const coords = getCurrentCoords();
-    zones = coords.map((c, i) => ({
+    const calcZones = getCalculatedZones();
+    zones = calcZones.map((z, i) => ({
         id: i,
-        outputData: `${c.baseX},${c.baseY}`, 
-        // OpenCV needs integer Rects, so we round here for the detection logic
-        x: Math.round(c.x - 50), 
-        y: Math.round(c.y - 50), 
-        w: 100, h: 100,
+        // The center X,Y is what we want to tap
+        outputData: `${z.cx},${z.cy}`, 
+        // OpenCV ROI (Region of Interest) - small box around center for detection
+        x: Math.round(z.cx - 40), 
+        y: Math.round(z.cy - 40), 
+        w: 80, h: 80,
         locked: false, step: 0
     }));
 
@@ -283,7 +309,7 @@ document.getElementById('processBtn').onclick = async () => {
             let detected = [];
             zones.forEach(z => {
                 if(z.locked) return;
-                // Safe ROI check with integers
+                // Safe ROI check
                 if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
                     let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
                     if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
@@ -294,9 +320,11 @@ document.getElementById('processBtn').onclick = async () => {
                 let target = detected[0];
                 target.locked = true;
                 target.step = currentStep;
+                
                 let cell = document.getElementById(`c-${target.id}`);
                 cell.classList.add('detected');
                 cell.innerText = currentStep;
+                
                 currentStep++;
                 cooldown = 5; 
             }
@@ -361,7 +389,7 @@ document.getElementById('btnDownload').onclick = () => {
     const a = document.createElement('a');
     a.href = url;
     const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
-    a.download = `Precision_Result_${timestamp}.json`;
+    a.download = `Pattern_Result_${timestamp}.json`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
