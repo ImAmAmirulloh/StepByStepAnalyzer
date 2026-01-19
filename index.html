@@ -891,7 +891,7 @@ document.getElementById('videoInput').addEventListener('change', (e) => {
     };
   }
 });
-
+/*
 function getCalculatedZones() {
   if (overlayCanvas.width === 0) return [];
 
@@ -935,6 +935,58 @@ function getCalculatedZones() {
   }
   return calculatedZones;
 }
+*/
+function getCalculatedZones() {
+  if (overlayCanvas.width === 0) return [];
+
+  const w = overlayCanvas.width;
+  const h = overlayCanvas.height;
+
+  const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+  const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+  const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+
+  const startX = w * sPct;
+  const endX = w * (1 - sPct);
+  const startY = h * tPct;
+  const endY = h * (1 - bPct);
+
+  const gridW = endX - startX;
+  const gridH = endY - startY;
+
+  const cols = 4, rows = 5;
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
+
+  // Ambil resolusi target dari input
+  const targetWidth = parseInt(document.getElementById('targetWidthInput').value);
+  const targetHeight = parseInt(document.getElementById('targetHeightInput').value);
+
+  let calculatedZones = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const zx = startX + (c * cellW);
+      const zy = startY + (r * cellH);
+
+      // Center relatif terhadap video
+      const relX = (zx + cellW / 2) / w;
+      const relY = (zy + cellH / 2) / h;
+
+      // Konversi ke resolusi target
+      const cxTarget = Math.round(relX * targetWidth);
+      const cyTarget = Math.round(relY * targetHeight);
+
+      calculatedZones.push({
+        x: zx, y: zy, w: cellW, h: cellH,
+        relX, relY,
+        cxTarget, cyTarget
+      });
+    }
+  }
+  return calculatedZones;
+}
+
 
 function drawOverlay() {
   if (overlayCanvas.width === 0) return;
@@ -1096,6 +1148,18 @@ console.log(`Target Clicker Resolution: ${targetWidth}x${targetHeight}`);
 document.getElementById('btnDownload').onclick = () => {
   const steps = zones.filter(z => z.locked).sort((a, b) => a.step - b.step);
 
+  const actionList = steps.map(s => ({
+  "data": `${s.cxTarget},${s.cyTarget}`,
+  "extras": [
+    { "data": String(s.step), "id": "extra_coordinate_description" },
+    { "data": 120, "id": "extra_delay_before_next_action" }
+  ],
+  "flags": 0,
+  "type": "TAP_COORDINATE",
+  "uid": crypto.randomUUID()
+}));
+
+/*  
   const actionList = steps.map(s => {
     const normX = s.fixedX / videoPlayer.videoWidth;
     const normY = s.fixedY / videoPlayer.videoHeight;
@@ -1113,7 +1177,7 @@ document.getElementById('btnDownload').onclick = () => {
         "uid": crypto.randomUUID()
     };
 });
-
+*/
 /*
   const actionList = steps.map(s => ({
     "data": `${s.fixedX},${s.fixedY}`,
