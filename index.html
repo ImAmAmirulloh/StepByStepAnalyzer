@@ -115,20 +115,21 @@
         <!-- Existing sliders... -->
       
         <div class="slider-row">
-          <div class="slider-header">
-            <label>Target Width</label>
-            <span class="val-badge" id="targetWidthBadge">2400</span>
+            <div class="slider-header">
+              <label>Target Width</label>
+              <span class="val-badge" id="targetWidthBadge"></span>
+            </div>
+            <input type="number" id="targetWidthInput" min="100" max="5000" step="1">
           </div>
-          <input type="number" id="targetWidthInput" min="100" max="5000" step="1" value="2400">
-        </div>
-      
-        <div class="slider-row">
-          <div class="slider-header">
-            <label>Target Height</label>
-            <span class="val-badge" id="targetHeightBadge">1080</span>
+          
+          <div class="slider-row">
+            <div class="slider-header">
+              <label>Target Height</label>
+              <span class="val-badge" id="targetHeightBadge"></span>
+            </div>
+            <input type="number" id="targetHeightInput" min="100" max="5000" step="1">
           </div>
-          <input type="number" id="targetHeightInput" min="100" max="5000" step="1" value="1080">
-        </div>
+          
     </div>
       
     <div id="grid" class="results-grid"></div>
@@ -630,7 +631,7 @@ document.getElementById('processBtn').onclick = async () => {
 
     let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
     let currentTime = 0, interval = 0.1, cooldown = 0;
-
+    
     async function processFrame() {
         if(currentTime >= videoPlayer.duration) {
             statusEl.innerText = "Scanning Finished!";
@@ -638,83 +639,83 @@ document.getElementById('processBtn').onclick = async () => {
             document.getElementById('btnDownload').style.display = 'block';
             gray.delete(); prevGray.delete(); diff.delete();
             return;
-        }
-        videoPlayer.currentTime = currentTime;
-        await new Promise(r => videoPlayer.onseeked = r);
-        procCtx.drawImage(videoPlayer, 0, 0);
-        let src = cv.imread(procCanvas);
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-        if(!prevGray.empty() && cooldown <= 0) {
-            cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
-            let detected = [];
-            zones.forEach(z => {
-                if(z.locked) return;
-                // Safe ROI check
-                if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
+            }
+            videoPlayer.currentTime = currentTime;
+            await new Promise(r => videoPlayer.onseeked = r);
+            procCtx.drawImage(videoPlayer, 0, 0);
+            let src = cv.imread(procCanvas);
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            
+            if(!prevGray.empty() && cooldown <= 0) {
+                cv.absdiff(gray, prevGray, diff);
+                cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
+                let detected = [];
+                zones.forEach(z => {
+                    if(z.locked) return;
+                    // Safe ROI check
+                    if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
                     let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
                     if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
                     roi.delete();
-                }
-            });
-            if(detected.length > 0) {
-                let target = detected[0];
-                target.locked = true;
-                target.step = currentStep;
-                
-                let cell = document.getElementById(`c-${target.id}`);
-                cell.classList.add('detected');
-                cell.innerText = currentStep;
-                
-                // Update status with both calculated and fixed coordinates
-                statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
-                
-                currentStep++;
-                cooldown = 5; 
-            }
-        }
-        if(cooldown > 0) cooldown--;
-        gray.copyTo(prevGray);
-        src.delete();
-        currentTime += interval;
-        requestAnimationFrame(processFrame);
-    }
-    processFrame();
-};
-
-document.getElementById('btnDownload').onclick = () => {
+                    }
+                    });
+                    if(detected.length > 0) {
+                        let target = detected[0];
+                        target.locked = true;
+                        target.step = currentStep;
+                        
+                        let cell = document.getElementById(`c-${target.id}`);
+                        cell.classList.add('detected');
+                        cell.innerText = currentStep;
+                        
+                        // Update status with both calculated and fixed coordinates
+                        statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
+                        
+                        currentStep++;
+                        cooldown = 5; 
+                        }
+                        }
+                        if(cooldown > 0) cooldown--;
+                        gray.copyTo(prevGray);
+                        src.delete();
+                        currentTime += interval;
+                        requestAnimationFrame(processFrame);
+                        }
+                        processFrame();
+                        };
+                        
+                        document.getElementById('btnDownload').onclick = () => {
     const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
     
     const actionList = steps.map(s => ({
         "data": `${s.fixedX},${s.fixedY}`, // Use FIXED coordinates for output
         "extras": [
-            { "data": String(s.step), "id": "extra_coordinate_description" },
-            { "data": 120, "id": "extra_delay_before_next_action" }
+        { "data": String(s.step), "id": "extra_coordinate_description" },
+        { "data": 120, "id": "extra_delay_before_next_action" }
         ],
         "flags": 0,
         "type": "TAP_COORDINATE",
         "uid": crypto.randomUUID()
-    }));
-
-    const keymapData = {
-        "app_version": 63, 
-        "keymap_db_version": 13,
-        "fingerprint_map_list": [
+        }));
+        
+        const keymapData = {
+            "app_version": 63, 
+            "keymap_db_version": 13,
+            "fingerprint_map_list": [
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
-        ],
-        "keymap_list": [{
-            "actionList": actionList, 
-            "constraintList": [], 
-            "constraintMode": 1, 
-            "flags": 0, 
-            "id": 27, 
-            "isEnabled": true,
-            "trigger": {
-                "extras": [], 
+            ],
+            "keymap_list": [{
+                "actionList": actionList, 
+                "constraintList": [], 
+                "constraintMode": 1, 
+                "flags": 0, 
+                "id": 27, 
+                "isEnabled": true,
+                "trigger": {
+                    "extras": [], 
                 "flags": 1,
                 "keys": [{ 
                     "clickType": 2, 
@@ -722,13 +723,13 @@ document.getElementById('btnDownload').onclick = () => {
                     "flags": 0, 
                     "keyCode": 24, 
                     "uid": crypto.randomUUID() 
-                }],
-                "mode": 2
+                    }],
+                    "mode": 2
             },
             "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
-        }]
+            }]
     };
-
+    
     const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -740,27 +741,33 @@ document.getElementById('btnDownload').onclick = () => {
     setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, 100);
-};
-</script>
+        }, 100);
+        };
+    </script>
 -->
 <script>
-let cvReady = false;
-let zones = [];
-let currentStep = 1;
-
-// Initialize Grid UI (20 Cells for 4x5)
-const gridEl = document.getElementById('grid');
-gridEl.innerHTML = '';
-for (let i = 0; i < 20; i++) {
-  let d = document.createElement('div');
-  d.className = 'cell';
-  d.id = `c-${i}`;
-  d.innerText = i + 1;
-  gridEl.appendChild(d);
-}
-
-const videoPlayer = document.getElementById('videoPlayer');
+    let cvReady = false;
+    let zones = [];
+    let currentStep = 1;
+    
+    const res = JSON.parse(localStorage.getItem('targetResolution') || '{}');
+    
+    const targetWidthDef = Math.round(screen.width * window.devicePixelRatio); //2400;  // ganti sesuai resolusi clicker
+    const targetHeightDef = Math.round(screen.height * window.devicePixelRatio); //1080;
+    const targetWidth = parseInt(res.width || targetWidthDef);
+    const targetHeight = parseInt(res.height || targetHeightDef);
+    // Initialize Grid UI (20 Cells for 4x5)
+    const gridEl = document.getElementById('grid');
+    gridEl.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+        let d = document.createElement('div');
+        d.className = 'cell';
+        d.id = `c-${i}`;
+        d.innerText = i + 1;
+        gridEl.appendChild(d);
+    }
+    
+    const videoPlayer = document.getElementById('videoPlayer');
 const overlayCanvas = document.getElementById('overlayCanvas');
 const overlayCtx = overlayCanvas.getContext('2d');
 const procCanvas = document.getElementById('procCanvas');
@@ -795,22 +802,25 @@ function saveSliderSettings() {
   localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
 }
 
-function loadSliderSettings() {
-  const saved = localStorage.getItem('patternRecorderMargins');
+function loadTargetResolution() {
+  const saved = localStorage.getItem('targetResolution');
   if (saved) {
-    const settings = JSON.parse(saved);
-    if (settings.top) {
-      document.getElementById('marginTop').value = settings.top;
-      document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
-    }
-    if (settings.bottom) {
-      document.getElementById('marginBottom').value = settings.bottom;
-      document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
-    }
-    if (settings.side) {
-      document.getElementById('marginSide').value = settings.side;
-      document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
-    }
+    const { width, height } = JSON.parse(saved);
+    document.getElementById('targetWidthInput').value = width;
+    document.getElementById('targetHeightInput').value = height;
+    document.getElementById('targetWidthBadge').innerText = width;
+    document.getElementById('targetHeightBadge').innerText = height;
+  } else {
+    // gunakan default dari screen
+    document.getElementById('targetWidthInput').value = targetWidthDef;
+    document.getElementById('targetHeightInput').value = targetHeightDef;
+    document.getElementById('targetWidthBadge').innerText = targetWidthDef;
+    document.getElementById('targetHeightBadge').innerText = targetHeightDef;
+    // simpan ke localStorage
+    localStorage.setItem('targetResolution', JSON.stringify({
+      width: targetWidthDef,
+      height: targetHeightDef
+    }));
   }
 }
 
@@ -830,6 +840,16 @@ function loadTargetResolution() {
     document.getElementById('targetHeightInput').value = height;
     document.getElementById('targetWidthBadge').innerText = width;
     document.getElementById('targetHeightBadge').innerText = height;
+  } else {
+    // gunakan default dari screen
+    document.getElementById('targetWidthInput').value = targetWidthDef;
+    document.getElementById('targetHeightInput').value = targetHeightDef;
+    document.getElementById('targetWidthBadge').innerText = targetWidthDef;
+    document.getElementById('targetHeightBadge').innerText = targetHeightDef;
+    localStorage.setItem('targetResolution', JSON.stringify({
+      width: targetWidthDef,
+      height: targetHeightDef
+    }));
   }
 }
 
@@ -838,10 +858,8 @@ function loadTargetResolution() {
 });
 
 window.addEventListener('load', () => {
-  loadSliderSettings();
-  loadTargetResolution(); // ← tambahkan ini
+  loadTargetResolution();
 });
-
 
 // Sliders listener
 ['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
@@ -1073,12 +1091,6 @@ document.getElementById('processBtn').onclick = async () => {
   processFrame();
 };
 
-const res = JSON.parse(localStorage.getItem('targetResolution') || '{}');
-
-const targetWidthDef = Math.round(screen.width * window.devicePixelRatio); //2400;  // ganti sesuai resolusi clicker
-const targetHeightDef = Math.round(screen.height * window.devicePixelRatio); //1080;
-const targetWidth = parseInt(res.width || targetWidthDef);
-const targetHeight = parseInt(res.height || targetHeightDef);
 console.log(`Target Clicker Resolution: ${targetWidth}x${targetHeight}`);
 // Download logic unchanged
 document.getElementById('btnDownload').onclick = () => {
