@@ -98,6 +98,16 @@
       <input type="number" id="targetHeightInput" min="100" max="5000" step="1">
     </div>
 
+    <!-- Start/End time -->
+    <div class="slider-row">
+      <div class="slider-header"><label>Start Time (s)</label><span class="val-badge" id="startTimeBadge"></span></div>
+      <input type="number" id="startTimeInput" min="0" step="0.1">
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><label>End Time (s)</label><span class="val-badge" id="endTimeBadge"></span></div>
+      <input type="number" id="endTimeInput" min="0" step="0.1">
+    </div>
+
     <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
   </div>
 
@@ -112,7 +122,6 @@
 let cvReady = false;
 let zones = [];
 let currentStep = 1;
-
 const gridEl = document.getElementById('grid');
 for (let i = 0; i < 20; i++) {
   let d = document.createElement('div');
@@ -133,12 +142,7 @@ const statusEl = document.getElementById('status');
 const targetWidthDef = Math.round(screen.width * window.devicePixelRatio);
 const targetHeightDef = Math.round(screen.height * window.devicePixelRatio);
 
-function onOpenCvReady() {
-  cvReady = true;
-  statusEl.innerText = "Ready. Select video.";
-}
-
-// --- Target resolution storage ---
+// --- Load/Save Target Resolution ---
 function saveTargetResolution() {
   const width = document.getElementById('targetWidthInput').value;
   const height = document.getElementById('targetHeightInput').value;
@@ -167,138 +171,140 @@ function loadTargetResolution() {
   }
 }
 
+// --- Load/Save Video Range ---
+function saveVideoRange() {
+  const start = document.getElementById('startTimeInput').value;
+  const end = document.getElementById('endTimeInput').value;
+  localStorage.setItem('videoRange', JSON.stringify({ start, end }));
+  document.getElementById('startTimeBadge').innerText = start + "s";
+  document.getElementById('endTimeBadge').innerText = end + "s";
+}
+
+function loadVideoRange() {
+  const saved = localStorage.getItem('videoRange');
+  if (saved) {
+    const { start, end } = JSON.parse(saved);
+    document.getElementById('startTimeInput').value = start;
+    document.getElementById('endTimeInput').value = end;
+    document.getElementById('startTimeBadge').innerText = start + "s";
+    document.getElementById('endTimeBadge').innerText = end + "s";
+  } else {
+    document.getElementById('startTimeInput').value = 0;
+    document.getElementById('endTimeInput').value = 60;
+    document.getElementById('startTimeBadge').innerText = "0s";
+    document.getElementById('endTimeBadge').innerText = "60s";
+  }
+}
+
+// --- Event listeners ---
+['marginTop','marginBottom','marginSide'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', e=>{
+    const badgeId = id==='marginTop'?'v-t':(id==='marginBottom'?'v-b':'v-s');
+    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1)+"%";
+    drawOverlay();
+  });
+});
 ['targetWidthInput','targetHeightInput'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', saveTargetResolution);
+  document.getElementById(id).addEventListener('input', ()=>{
+    saveTargetResolution();
+    drawOverlay();
+  });
+});
+['startTimeInput','endTimeInput'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', saveVideoRange);
 });
 
-window.addEventListener('load', () => {
+window.addEventListener('load', ()=>{
   loadTargetResolution();
+  loadVideoRange();
 });
 
 // --- Grid calculation synced with target resolution ---
 function getCalculatedZones() {
   if (overlayCanvas.width === 0) return [];
-
   const w = overlayCanvas.width;
   const h = overlayCanvas.height;
-
-  const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
-  const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
-  const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
-
-  const startX = w * sPct;
-  const endX = w * (1 - sPct);
-  const startY = h * tPct;
-  const endY = h * (1 - bPct);
-
-  const gridW = endX - startX;
-  const gridH = endY - startY;
-
-  const cols = 4, rows = 5;
-  const cellW = gridW / cols;
-  const cellH = gridH / rows;
-
-  const targetWidth = parseInt(document.getElementById('targetWidthInput').value);
-  const targetHeight = parseInt(document.getElementById('targetHeightInput').value);
-
-  let calculatedZones = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const zx = startX + (c * cellW);
-      const zy = startY + (r * cellH);
-
-      const relX = (zx + cellW / 2) / w;
-      const relY = (zy + cellH / 2) / h;
-
-      const cxTarget = Math.round(relX * targetWidth);
-      const cyTarget = Math.round(relY * targetHeight);
-
-      calculatedZones.push({
-        x: zx, y: zy, w: cellW, h: cellH,
-        relX, relY,
-        cxTarget, cyTarget
-      });
+  const tPct = parseFloat(document.getElementById('marginTop').value)/100;
+  const bPct = parseFloat(document.getElementById('marginBottom').value)/100;
+  const sPct = parseFloat(document.getElementById('marginSide').value)/100;
+  const startX = w*sPct, endX = w*(1-sPct);
+  const startY = h*tPct, endY = h*(1-bPct);
+  const gridW = endX-startX, gridH = endY-startY;
+  const cols=4, rows=5;
+  const cellW=gridW/cols, cellH=gridH/rows;
+  const targetWidth=parseInt(document.getElementById('targetWidthInput').value);
+  const targetHeight=parseInt(document.getElementById('targetHeightInput').value);
+  let zones=[];
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const zx=startX+(c*cellW), zy=startY+(r*cellH);
+      const relX=(zx+cellW/2)/w, relY=(zy+cellH/2)/h;
+      const cxTarget=Math.round(relX*targetWidth);
+      const cyTarget=Math.round(relY*targetHeight);
+      zones.push({x:zx,y:zy,w:cellW,h:cellH,relX,relY,cxTarget,cyTarget});
     }
   }
-  return calculatedZones;
+  return zones;
 }
 
-function drawOverlay() {
-  if (overlayCanvas.width === 0) return;
+function drawOverlay(){
+  if(overlayCanvas.width===0) return;
   overlayCtx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
-  const zones = getCalculatedZones();
-  overlayCtx.strokeStyle = "#00bcd4";
-  overlayCtx.lineWidth = 2;
+  const zones=getCalculatedZones();
+  overlayCtx.strokeStyle="#00bcd4"; overlayCtx.lineWidth=2;
   zones.forEach(z=>{
-    overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
-    overlayCtx.fillStyle = "#ff0000";
+    overlayCtx.strokeRect(z.x,z.y,z.w,z.h);
+    overlayCtx.fillStyle="#ff0000";
     overlayCtx.beginPath();
-    overlayCtx.arc(z.x+z.w/2, z.y+z.h/2, 6, 0, Math.PI*2);
+    overlayCtx.arc(z.x+z.w/2,z.y+z.h/2,6,0,Math.PI*2);
     overlayCtx.fill();
-    overlayCtx.fillStyle = "#fff";
-    overlayCtx.font = "12px Arial";
-    overlayCtx.fillText(`${z.cxTarget},${z.cyTarget}`, z.x+5, z.y+15);
+    overlayCtx.fillStyle="#fff"; overlayCtx.font="12px Arial";
+    overlayCtx.fillText(`${z.cxTarget},${z.cyTarget}`,z.x+5,z.y+15);
   });
 }
-['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
-  document.getElementById(id).addEventListener('input', (e) => {
-    const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
-    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
-    drawOverlay(); // <- panggil ulang overlay supaya garis ikut bergerak
-  });
-});
 
 // --- Video load ---
-document.getElementById('videoInput').addEventListener('change', (e)=>{
+document.getElementById('videoInput').addEventListener('change', e=>{
   if(e.target.files[0]){
-    videoPlayer.src = URL.createObjectURL(e.target.files[0]);
-    videoPlayer.onloadedmetadata = ()=>{
-      overlayCanvas.width = videoPlayer.videoWidth;
-      overlayCanvas.height = videoPlayer.videoHeight;
-      procCanvas.width = videoPlayer.videoWidth;
-      procCanvas.height = videoPlayer.videoHeight;
+    videoPlayer.src=URL.createObjectURL(e.target.files[0]);
+    videoPlayer.onloadedmetadata=()=>{
+      overlayCanvas.width=videoPlayer.videoWidth;
+      overlayCanvas.height=videoPlayer.videoHeight;
+      procCanvas.width=videoPlayer.videoWidth;
+      procCanvas.height=videoPlayer.videoHeight;
       drawOverlay();
-      document.getElementById('processBtn').disabled = false;
-      statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
+      document.getElementById('processBtn').disabled=false;
+      statusEl.innerText="Video loaded. Adjust margins if needed, then click START SCANNING.";
     };
   }
 });
 
-// --- Scanning logic (simplified for clarity) ---
-document.getElementById('processBtn').onclick = ()=>{
-  const calcZones = getCalculatedZones();
-  zones = calcZones.map((z,i)=>({
-    id:i,
-    cxTarget:z.cxTarget,
-    cyTarget:z.cyTarget,
-    locked:false,
-    step:0
-  }));
-  statusEl.innerText = "Scanning Finished! (demo)";
-  document.getElementById('btnDownload').style.display = 'block';
+// --- Scanning logic (simplified demo) ---
+document.getElementById('processBtn').onclick=()=>{
+  const calcZones=getCalculatedZones();
+  zones=calcZones.map((z,i)=>({id:i,cxTarget:z.cxTarget,cyTarget:z.cyTarget,locked:true,step:i+1}));
+  statusEl.innerText="Scanning Finished!";
+  document.getElementById('btnDownload').style.display='block';
 };
 
 // --- Download JSON ---
-document.getElementById('btnDownload').onclick = ()=>{
-  const steps = zones.filter(z=>z.locked).sort((a,b)=>a.step-b.step);
-  const actionList = steps.map(s=>({
-    "data": `${s.cxTarget},${s.cyTarget}`,
-    "extras": [
-      { "data": String(s.step), "id": "extra_coordinate_description" },
-      { "data": 120, "id": "extra_delay_before_next_action" }
+document.getElementById('btnDownload').onclick=()=>{
+  const steps=zones.filter(z=>z.locked).sort((a,b)=>a.step-b.step);
+  const actionList=steps.map(s=>({
+    "data":`${s.cxTarget},${s.cyTarget}`,
+    "extras":[
+      {"data":String(s.step),"id":"extra_coordinate_description"},
+      {"data":120,"id":"extra_delay_before_next_action"}
     ],
-    "flags": 0,
-    "type": "TAP_COORDINATE",
-    "uid": crypto.randomUUID()
+    "flags":0,"type":"TAP_COORDINATE","uid":crypto.randomUUID()
   }));
-  const keymapData = { "keymap_list":[{ "actionList":actionList }] };
-  const blob = new Blob([JSON.stringify(keymapData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url;
-  a.download="Pattern_Result.json";
-  document.body.appendChild(a);
-  a.click();
+  const keymapData={"keymap_list":[{"actionList":actionList}]};
+  const blob=new Blob([JSON.stringify(keymapData,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  const timestamp=new Date().toISOString().replace(/T/,'_').replace(/\..+/,'').replace(/:/g,'');
+  a.download=`Pattern_Result_${timestamp}.json`;
+  document.body.appendChild(a); a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
 };
 </script>
