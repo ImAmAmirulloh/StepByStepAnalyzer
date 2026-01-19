@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Pattern Recorder V3</title>
+    <title>Video Pattern Recorder (KeyMapper Compatible)</title>
     <style>
-        :root { --primary: #ff6b6b; --bg: #f5f6fa; --text: #2f3640; }
+        :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
         body { 
             font-family: 'Segoe UI', sans-serif; 
             background: var(--bg); 
@@ -27,13 +27,14 @@
             box-sizing: border-box; 
         }
 
-        /* HEADER & MENU */
-        h2 { text-align: center; color: #2d3436; margin-top: 0; font-size: 1.2rem; }
-        .nav-links { text-align: center; margin-bottom: 20px; font-size: 0.9rem; }
-        .nav-links a { text-decoration: none; color: #636e72; margin: 0 5px; font-weight: bold; }
-        .nav-links a.active { color: var(--primary); text-decoration: underline; }
+        /* MENU HEADER */
+        .nav-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .nav-header h2 { margin: 5px 0 10px 0; color: #2c3e50; }
+        .nav-links a { text-decoration: none; color: #7f8c8d; margin: 0 8px; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-links a.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
 
-        /* VIDEO PREVIEW */
+        /* VIDEO PREVIEW AREA */
         .preview-wrapper { 
             position: relative; 
             width: 100%; 
@@ -42,26 +43,29 @@
             overflow: hidden; 
             margin-bottom: 15px; 
             line-height: 0; 
+            border: 2px solid #333;
         }
         #videoPlayer { width: 100%; display: block; }
         #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-        /* CONTROLS */
+        /* SLIDERS & CONTROLS */
         .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
-        .slider-row { margin-bottom: 12px; }
-        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
-        .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
-        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        .slider-row { margin-bottom: 15px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .slider-header label { font-size: 0.85rem; font-weight: bold; color: #555; text-transform: uppercase; }
+        .val-badge { background: #eee; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-family: monospace; font-weight: bold; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; height: 6px; }
 
-        .action-btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; font-weight: bold; transition: 0.2s; }
-        .action-btn:disabled { background: #b2bec3; cursor: not-allowed; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
+        .btn-start { background: var(--primary); }
+        .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-download { background: var(--success); margin-top: 15px; display: none; }
+        
+        /* FILE INPUT */
+        input[type="file"] { width: 100%; margin-bottom: 15px; font-size: 0.9rem; }
+        ::file-selector-button { background: #34495e; border: none; padding: 8px 15px; border-radius: 4px; color: white; cursor: pointer; margin-right: 10px; }
 
-        /* FILE INPUT STYLE */
-        input[type="file"] { width: 100%; margin-bottom: 15px; }
-        ::file-selector-button { background: #eee; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; margin-right: 10px; }
-
-        /* RESULTS GRID (Video Mode usually 4x5) */
+        /* RESULTS GRID (5 Rows x 4 Cols) */
         .results-grid { 
             display: grid; 
             grid-template-columns: repeat(4, 1fr); 
@@ -71,38 +75,40 @@
         }
         .cell { 
             aspect-ratio: 1; 
-            background: #f1f2f6; 
+            background: #ecf0f1; 
             border-radius: 6px; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             font-weight: bold; 
-            font-size: 1.2rem; 
+            font-size: 1.1rem; 
             color: #bdc3c7; 
             border: 2px solid transparent; 
         }
         .cell.detected { 
-            background: #fff0f0; 
-            border-color: var(--primary); 
-            color: var(--primary); 
-            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.2); 
+            background: white; 
+            border-color: var(--danger); 
+            color: var(--danger); 
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3); 
         }
 
-        #status { text-align: center; font-size: 0.85rem; margin: 10px 0; color: #636e72; }
+        #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; font-weight: 500; }
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
 <div class="main-container">
-    <div class="nav-links">
-        <a href="index.html" class="active">Video Recorder</a> || 
-        <a href="flipimage.html">Same Image Flip</a> || 
-        <a href="sudokusolver.html">Sudoku Solver</a>
+    
+    <div class="nav-header">
+        <h2>Video Pattern Recorder</h2>
+        <div class="nav-links">
+            <a href="index.html" class="active">Video Analysis</a>
+            <a href="flipimage.html">Image Solver</a>
+            <a href="sudokusolver.html">Sudoku</a>
+        </div>
     </div>
 
-    <h2>Video Pattern Analysis</h2>
-    
     <input type="file" id="videoInput" accept="video/*">
     
     <div class="preview-wrapper">
@@ -112,27 +118,26 @@
 
     <div class="control-panel">
         <div class="slider-row">
-            <div class="slider-header"><label>TOP MARGIN</label><span class="val-badge" id="v-t">23%</span></div>
-            <input type="range" id="marginTop" min="0" max="50" value="23">
+            <div class="slider-header"><label>Top Margin</label><span class="val-badge" id="v-t">20%</span></div>
+            <input type="range" id="marginTop" min="0" max="50" value="20">
         </div>
         <div class="slider-row">
-            <div class="slider-header"><label>BOTTOM MARGIN</label><span class="val-badge" id="v-b">15%</span></div>
-            <input type="range" id="marginBottom" min="0" max="50" value="15">
+            <div class="slider-header"><label>Bottom Margin</label><span class="val-badge" id="v-b">20%</span></div>
+            <input type="range" id="marginBottom" min="0" max="50" value="20">
         </div>
         <div class="slider-row">
-            <div class="slider-header"><label>SIDE MARGIN</label><span class="val-badge" id="v-s">5%</span></div>
+            <div class="slider-header"><label>Side Margin</label><span class="val-badge" id="v-s">5%</span></div>
             <input type="range" id="marginSide" min="0" max="30" value="5">
         </div>
         
-        <button id="processBtn" class="action-btn" disabled>▶ Start Analysis</button>
+        <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
     </div>
 
-    <div id="status">Loading OpenCV...</div>
+    <div id="status">Waiting for OpenCV...</div>
 
-    <div id="grid" class="results-grid">
-        </div>
+    <div id="grid" class="results-grid"></div>
 
-    <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:20px; display:none;">💾 Download Key Mapper JSON</button>
+    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD KEY MAPPER JSON</button>
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
@@ -143,19 +148,9 @@ const ROWS = 5;
 const COLS = 4;
 let zones = []; 
 let currentStep = 1;
-let isProcessing = false;
 
-// DOM Elements
-const videoInput = document.getElementById('videoInput');
-const videoPlayer = document.getElementById('videoPlayer');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const procCanvas = document.getElementById('procCanvas');
-const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+// Initialize Grid (4x5 = 20 cells)
 const gridEl = document.getElementById('grid');
-const statusEl = document.getElementById('status');
-
-// Initialize 20 Cells (4x5)
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
     d.className = 'cell';
@@ -164,205 +159,206 @@ for(let i=0; i<20; i++) {
     gridEl.appendChild(d);
 }
 
+// Elements
+const videoInput = document.getElementById('videoInput');
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+const statusEl = document.getElementById('status');
+
+// OpenCV Loaded
 function onOpenCvReady() {
     cvReady = true;
-    statusEl.innerText = "Ready. Upload a video file.";
-    loadSliderSettings();
+    statusEl.innerText = "Ready. Select a screen recording.";
+    loadSettings();
 }
 
-// Sliders Logic
+// Slider Logic with LocalStorage
 const sliders = ['marginTop', 'marginBottom', 'marginSide'];
 sliders.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => {
-        updateBadge(id, el.value);
-        saveSliderSettings();
-        drawGridOverlay();
+        updateBadges();
+        drawOverlay();
+        saveSettings();
     });
 });
 
-function updateBadge(id, val) {
-    const map = {'marginTop': 'v-t', 'marginBottom': 'v-b', 'marginSide': 'v-s'};
-    if(map[id]) document.getElementById(map[id]).innerText = val + "%";
+function updateBadges() {
+    document.getElementById('v-t').innerText = document.getElementById('marginTop').value + '%';
+    document.getElementById('v-b').innerText = document.getElementById('marginBottom').value + '%';
+    document.getElementById('v-s').innerText = document.getElementById('marginSide').value + '%';
 }
 
-// --- LOCAL STORAGE ---
-function saveSliderSettings() {
+function saveSettings() {
     const settings = {};
     sliders.forEach(id => settings[id] = document.getElementById(id).value);
-    localStorage.setItem('videoRecorderSettings', JSON.stringify(settings));
+    localStorage.setItem('videoRecSettings', JSON.stringify(settings));
 }
 
-function loadSliderSettings() {
-    const saved = localStorage.getItem('videoRecorderSettings');
-    if (saved) {
-        const settings = JSON.parse(saved);
-        Object.keys(settings).forEach(id => {
-            const el = document.getElementById(id);
-            if(el) {
-                el.value = settings[id];
-                updateBadge(id, el.value);
-            }
-        });
+function loadSettings() {
+    const saved = localStorage.getItem('videoRecSettings');
+    if(saved) {
+        const s = JSON.parse(saved);
+        sliders.forEach(id => { if(s[id]) document.getElementById(id).value = s[id]; });
+        updateBadges();
     }
 }
 
-// Video Loading
+// Video Input Logic
 videoInput.addEventListener('change', (e) => {
     if(e.target.files[0]) {
         const url = URL.createObjectURL(e.target.files[0]);
         videoPlayer.src = url;
         videoPlayer.onloadedmetadata = () => {
-             overlayCanvas.width = videoPlayer.videoWidth;
-             overlayCanvas.height = videoPlayer.videoHeight;
-             procCanvas.width = videoPlayer.videoWidth;
-             procCanvas.height = videoPlayer.videoHeight;
-             drawGridOverlay();
-             statusEl.innerText = "Adjust green lines to match cards, then Click Start.";
-             document.getElementById('processBtn').disabled = false;
+            overlayCanvas.width = videoPlayer.videoWidth;
+            overlayCanvas.height = videoPlayer.videoHeight;
+            procCanvas.width = videoPlayer.videoWidth;
+            procCanvas.height = videoPlayer.videoHeight;
+            drawOverlay();
+            statusEl.innerText = "Align cyan lines with cards, then click Start.";
+            document.getElementById('processBtn').disabled = false;
         };
     }
 });
 
-function getDimensions() {
+function getDims() {
     const w = videoPlayer.videoWidth;
     const h = videoPlayer.videoHeight;
-    const topPct = parseInt(document.getElementById('marginTop').value) / 100;
-    const botPct = parseInt(document.getElementById('marginBottom').value) / 100;
-    const sidePct = parseInt(document.getElementById('marginSide').value) / 100;
-
-    const startX = w * sidePct;
-    const endX = w * (1 - sidePct);
-    const startY = h * topPct;
-    const endY = h * (1 - botPct);
+    const t = parseInt(document.getElementById('marginTop').value) / 100;
+    const b = parseInt(document.getElementById('marginBottom').value) / 100;
+    const s = parseInt(document.getElementById('marginSide').value) / 100;
     
-    return { w, h, startX, endX, startY, endY };
+    return {
+        startX: w * s,
+        endX: w * (1-s),
+        startY: h * t,
+        endY: h * (1-b),
+        w: w, h: h
+    };
 }
 
-function drawGridOverlay() {
-    if(isProcessing || !videoPlayer.videoWidth) return;
-    const d = getDimensions();
-    overlayCtx.clearRect(0, 0, d.w, d.h);
+function drawOverlay() {
+    if(!videoPlayer.videoWidth) return;
+    const d = getDims();
+    overlayCtx.clearRect(0,0,d.w,d.h);
     
+    // Cyan Box
+    overlayCtx.strokeStyle = "#00ffff"; 
+    overlayCtx.lineWidth = 3;
     const boxW = (d.endX - d.startX) / COLS;
     const boxH = (d.endY - d.startY) / ROWS;
-
-    overlayCtx.strokeStyle = "#00ff00"; 
-    overlayCtx.lineWidth = 3;
+    
     overlayCtx.beginPath();
-
     for(let r=0; r<ROWS; r++) {
         for(let c=0; c<COLS; c++) {
-            let x = d.startX + (c * boxW);
-            let y = d.startY + (r * boxH);
-            overlayCtx.rect(x, y, boxW, boxH);
+            overlayCtx.rect(d.startX + c*boxW, d.startY + r*boxH, boxW, boxH);
         }
     }
     overlayCtx.stroke();
 }
 
-// --- ANALYSIS LOGIC ---
-document.getElementById('processBtn').addEventListener('click', async () => {
+// --- ANALYSIS LOOP ---
+document.getElementById('processBtn').onclick = async () => {
     if(!cvReady) return;
-    isProcessing = true;
     document.getElementById('processBtn').disabled = true;
     document.getElementById('btnDownload').style.display = 'none';
+    statusEl.innerText = "Scanning video...";
     
-    // Define Detection Zones
+    // Reset Grid
+    currentStep = 1;
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+        c.innerText = (parseInt(c.id.split('-')[1])+1);
+    });
+
+    // Define Zones
     zones = [];
-    const d = getDimensions();
+    const d = getDims();
     const boxW = (d.endX - d.startX) / COLS;
     const boxH = (d.endY - d.startY) / ROWS;
 
     for(let r=0; r<ROWS; r++) {
         for(let c=0; c<COLS; c++) {
             zones.push({
-                id: (r*COLS) + c,
-                x: Math.floor(d.startX + (c * boxW) + (boxW * 0.15)), // 15% padding
-                y: Math.floor(d.startY + (r * boxH) + (boxH * 0.15)),
-                w: Math.floor(boxW * 0.7), 
-                h: Math.floor(boxH * 0.7),
-                cx: Math.floor(d.startX + (c * boxW) + (boxW/2)), // Center X for JSON
-                cy: Math.floor(d.startY + (r * boxH) + (boxH/2)), // Center Y for JSON
-                locked: false
+                id: r*COLS + c,
+                x: Math.floor(d.startX + c*boxW + boxW*0.2), // Inner crop
+                y: Math.floor(d.startY + r*boxH + boxH*0.2),
+                w: Math.floor(boxW*0.6),
+                h: Math.floor(boxH*0.6),
+                cx: Math.floor(d.startX + c*boxW + boxW/2), // Center X
+                cy: Math.floor(d.startY + r*boxH + boxH/2), // Center Y
+                locked: false,
+                step: 0
             });
         }
     }
 
     let cap = new cv.VideoCapture(videoPlayer);
-    let frame = new cv.Mat(d.h, d.w, cv.CV_8UC4);
     let gray = new cv.Mat();
     let prevGray = new cv.Mat();
     let diff = new cv.Mat();
     
-    let cooldown = 0;
-    currentStep = 1;
-
-    // Reset UI
-    document.querySelectorAll('.cell').forEach(c => {
-        c.className = 'cell';
-        c.innerText = c.id.split('-')[1] * 1 + 1;
-    });
-
-    const interval = 1/20; // Check every ~50ms
+    const interval = 0.1; // Check every 0.1s video time
     let currentTime = 0;
-    const duration = videoPlayer.duration;
+    let cooldown = 0;
 
-    async function loop() {
-        if(currentTime >= duration) {
+    async function processFrame() {
+        if(currentTime >= videoPlayer.duration) {
             statusEl.innerText = "Analysis Complete!";
-            isProcessing = false;
             document.getElementById('processBtn').disabled = false;
             document.getElementById('btnDownload').style.display = 'block';
-            frame.delete(); gray.delete(); prevGray.delete(); diff.delete();
+            gray.delete(); prevGray.delete(); diff.delete();
             return;
         }
 
-        // Seek video
         videoPlayer.currentTime = currentTime;
-        await new Promise(r => {
-             const h = () => { videoPlayer.removeEventListener('seeked', h); r(); };
-             videoPlayer.addEventListener('seeked', h);
-        });
+        await new Promise(r => { videoPlayer.onseeked = r; });
 
-        procCtx.drawImage(videoPlayer, 0, 0, d.w, d.h);
-        
-        // Draw locked zones red
-        overlayCtx.clearRect(0, 0, d.w, d.h);
-        overlayCtx.lineWidth = 3;
-        zones.filter(z => z.locked).forEach(z => {
-             overlayCtx.strokeStyle = "red";
-             overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
-        });
-
+        procCtx.drawImage(videoPlayer, 0, 0);
         let src = cv.imread(procCanvas);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
+        // Highlight locked zones
+        overlayCtx.clearRect(0,0,d.w,d.h);
+        zones.filter(z=>z.locked).forEach(z => {
+            overlayCtx.strokeStyle = "#e74c3c"; overlayCtx.lineWidth=4;
+            overlayCtx.strokeRect(z.cx - z.w/2 - 10, z.cy - z.h/2 - 10, z.w+20, z.h+20);
+            
+            // Draw Step Number on Video
+            overlayCtx.fillStyle = "#e74c3c";
+            overlayCtx.font = "bold 40px Arial";
+            overlayCtx.fillText(z.step, z.cx - 10, z.cy + 10);
+        });
+
         if(!prevGray.empty() && cooldown <= 0) {
             cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 50, 255, cv.THRESH_BINARY);
-
-            let changed = [];
+            cv.threshold(diff, diff, 40, 255, cv.THRESH_BINARY);
+            
+            let detected = [];
             zones.forEach(z => {
                 if(z.locked) return;
                 let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
-                let count = cv.countNonZero(roi);
-                if(count > (z.w * z.h * 0.2)) changed.push(z); // 20% change threshold
+                let changes = cv.countNonZero(roi);
                 roi.delete();
+                if(changes > (z.w*z.h*0.2)) detected.push(z); // 20% change threshold
             });
 
-            // If 1 or 2 cards flip (ignore screen wipes)
-            if(changed.length > 0 && changed.length <= 2) {
-                let z = changed[0];
+            // Logic: Only register if 1 or 2 cards flip (avoids scene cuts)
+            if(detected.length > 0 && detected.length <= 2) {
+                let z = detected[0]; // Take first detected
                 z.locked = true;
-                z.step = currentStep; // Store step for JSON
+                z.step = currentStep;
                 
-                const cell = document.getElementById(`c-${z.id}`);
+                // Update UI Grid
+                let cell = document.getElementById(`c-${z.id}`);
                 cell.classList.add('detected');
                 cell.innerText = currentStep;
                 
                 currentStep++;
-                cooldown = 5; // Wait 5 frames
+                cooldown = 3; // Skip next 3 checks
             }
         }
 
@@ -370,41 +366,42 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         gray.copyTo(prevGray);
         src.delete();
         currentTime += interval;
-        requestAnimationFrame(loop); // Non-blocking loop
+        requestAnimationFrame(processFrame);
     }
-    loop();
-});
+    processFrame();
+};
 
-// --- JSON DOWNLOAD (MATCHING FLIPIMAGE FORMAT) ---
+// --- JSON GENERATION (STRICT FORMAT) ---
 document.getElementById('btnDownload').onclick = () => {
-    // Filter only locked zones
-    let steps = zones.filter(z => z.locked).map(z => ({
-        step: z.step,
-        x: z.cx,
-        y: z.cy
+    
+    // 1. Filter and Sort detected steps
+    let steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
+    
+    if(steps.length === 0) return alert("No patterns found!");
+
+    // 2. Build Action List exactly like the uploaded JSON
+    const actionList = steps.map(s => ({
+        "type": "TAP_COORDINATE",
+        "data": `${s.cx},${s.cy}`,
+        "extras": [
+            { 
+                "id": "extra_coordinate_description", 
+                "data": String(s.step) // String as per requirement
+            },
+            { 
+                "id": "extra_delay_before_next_action", 
+                "data": 120 // Number (Integer) as per uploaded file
+            }
+        ],
+        "flags": 0,
+        "uid": crypto.randomUUID()
     }));
 
-    // Sort by step number
-    steps.sort((a, b) => a.step - b.step);
-
-    if (steps.length === 0) return alert("No patterns found!");
-
-    const actionList = steps.map((s, i) => {
-        return {
-            "type": "TAP_COORDINATE",
-            "data": `${s.x},${s.y}`,
-            "extras": [
-                { "id": "extra_coordinate_description", "data": `Step ${s.step}` },
-                { "id": "extra_delay_before_next_action", "data": "400" } 
-            ],
-            "flags": 0,
-            "uid": crypto.randomUUID()
-        };
-    });
-
-    const keymap = {
+    // 3. Build Full JSON Structure
+    const keymapData = {
         "app_version": 63,
         "keymap_db_version": 13,
+        // Crucial header for restore
         "fingerprint_map_list": [
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
@@ -415,15 +412,17 @@ document.getElementById('btnDownload').onclick = () => {
             "id": 1,
             "isEnabled": true,
             "uid": crypto.randomUUID(),
+            "flags": 0,
             "trigger": {
                 "mode": 2,
-                "keys": [{ "keyCode": 24, "clickType": 2, "uid": crypto.randomUUID() }]
+                "keys": [{ "keyCode": 24, "clickType": 2, "uid": crypto.randomUUID() }] // Volume Up
             },
             "actionList": actionList
         }]
     };
 
-    const blob = new Blob([JSON.stringify(keymap, null, 2)], { type: 'application/json' });
+    // 4. Download
+    const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
