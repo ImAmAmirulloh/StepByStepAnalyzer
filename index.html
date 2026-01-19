@@ -1028,6 +1028,28 @@ document.getElementById('processBtn').onclick = async () => {
 document.getElementById('btnDownload').onclick = () => {
   const steps = zones.filter(z => z.locked).sort((a, b) => a.step - b.step);
 
+  const targetWidth = screen.width; //2400;  // ganti sesuai resolusi clicker
+  const targetHeight = screen.height; //1080;
+  
+  const actionList = steps.map(s => {
+    const normX = s.fixedX / videoPlayer.videoWidth;
+    const normY = s.fixedY / videoPlayer.videoHeight;
+    const clickerX = Math.round(normX * targetWidth);
+    const clickerY = Math.round(normY * targetHeight);
+
+    return {
+        "data": `${clickerX},${clickerY}`,
+        "extras": [
+            { "data": String(s.step), "id": "extra_coordinate_description" },
+            { "data": 120, "id": "extra_delay_before_next_action" }
+        ],
+        "flags": 0,
+        "type": "TAP_COORDINATE",
+        "uid": crypto.randomUUID()
+    };
+});
+
+/*
   const actionList = steps.map(s => ({
     "data": `${s.fixedX},${s.fixedY}`,
     "extras": [
@@ -1038,7 +1060,7 @@ document.getElementById('btnDownload').onclick = () => {
     "type": "TAP_COORDINATE",
     "uid": crypto.randomUUID()
   }));
-
+*/
   const keymapData = {
     "app_version": 63,
     "keymap_db_version": 13,
