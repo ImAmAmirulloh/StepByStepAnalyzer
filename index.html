@@ -354,11 +354,406 @@ document.getElementById('processBtn').onclick = async () => {
                 
                 // Update UI Grid
                 let cell = document.getElementById(`c-${z.id}`);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Video Pattern Recorder (KeyMapper Compatible)</title>
+    <style>
+        :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        
+        .main-container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            max-width: 600px; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+
+        /* MENU HEADER */
+        .nav-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .nav-header h2 { margin: 5px 0 10px 0; color: #2c3e50; }
+        .nav-links a { text-decoration: none; color: #7f8c8d; margin: 0 8px; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-links a.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+        /* VIDEO PREVIEW AREA */
+        .preview-wrapper { 
+            position: relative; 
+            width: 100%; 
+            background: #000; 
+            /* If you have a template background image, it appears here */
+            background-image: url('tem_bg.png'); 
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 8px; 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            line-height: 0; 
+            border: 2px solid #333;
+            min-height: 400px; /* Ensures space if video isn't loaded yet */
+        }
+        #videoPlayer { width: 100%; display: block; position: relative; z-index: 1; }
+        #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+
+        /* SLIDERS & CONTROLS */
+        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
+        .slider-row { margin-bottom: 15px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .slider-header label { font-size: 0.85rem; font-weight: bold; color: #555; text-transform: uppercase; }
+        .val-badge { background: #eee; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-family: monospace; font-weight: bold; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; height: 6px; }
+
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
+        .btn-start { background: var(--primary); }
+        .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-download { background: var(--success); margin-top: 15px; display: none; }
+        
+        /* FILE INPUT */
+        input[type="file"] { width: 100%; margin-bottom: 15px; font-size: 0.9rem; }
+        ::file-selector-button { background: #34495e; border: none; padding: 8px 15px; border-radius: 4px; color: white; cursor: pointer; margin-right: 10px; }
+
+        /* RESULTS GRID (5 Rows x 4 Cols) */
+        .results-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 6px; 
+            margin-top: 20px; 
+            width: 100%;
+        }
+        .cell { 
+            aspect-ratio: 1; 
+            background: #ecf0f1; 
+            border-radius: 6px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            color: #bdc3c7; 
+            border: 2px solid transparent; 
+        }
+        .cell.detected { 
+            background: white; 
+            border-color: var(--danger); 
+            color: var(--danger); 
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3); 
+        }
+
+        #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; font-weight: 500; }
+    </style>
+    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
+</head>
+<body>
+
+<div class="main-container">
+    
+    <div class="nav-header">
+        <h2>Video Pattern Recorder</h2>
+        <div class="nav-links">
+            <a href="index.html" class="active">Video Analysis</a>
+            <a href="flipimage.html">Image Solver</a>
+            <a href="sudokusolver.html">Sudoku</a>
+        </div>
+    </div>
+
+    <input type="file" id="videoInput" accept="video/*">
+    
+    <div class="preview-wrapper">
+        <video id="videoPlayer" muted playsinline></video>
+        <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <div class="control-panel">
+        <div class="slider-row">
+            <div class="slider-header"><label>Top Margin</label><span class="val-badge" id="v-t">20%</span></div>
+            <input type="range" id="marginTop" min="0" max="50" value="20">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>Bottom Margin</label><span class="val-badge" id="v-b">20%</span></div>
+            <input type="range" id="marginBottom" min="0" max="50" value="20">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>Side Margin</label><span class="val-badge" id="v-s">5%</span></div>
+            <input type="range" id="marginSide" min="0" max="30" value="5">
+        </div>
+        
+        <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
+    </div>
+
+    <div id="status">Waiting for OpenCV...</div>
+
+    <div id="grid" class="results-grid"></div>
+
+    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD KEY MAPPER JSON</button>
+</div>
+
+<canvas id="procCanvas" style="display:none;"></canvas>
+
+<script>
+let cvReady = false;
+const ROWS = 5;
+const COLS = 4;
+let zones = []; 
+let currentStep = 1;
+
+// Initialize Grid (4x5 = 20 cells)
+const gridEl = document.getElementById('grid');
+for(let i=0; i<20; i++) {
+    let d = document.createElement('div');
+    d.className = 'cell';
+    d.id = `c-${i}`;
+    d.innerText = i + 1;
+    gridEl.appendChild(d);
+}
+
+// Elements
+const videoInput = document.getElementById('videoInput');
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+const statusEl = document.getElementById('status');
+
+// OpenCV Loaded
+function onOpenCvReady() {
+    cvReady = true;
+    statusEl.innerText = "Ready. Select a screen recording.";
+    loadSettings();
+}
+
+// Slider Logic with LocalStorage
+const sliders = ['marginTop', 'marginBottom', 'marginSide'];
+sliders.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+        updateBadges();
+        drawOverlay();
+        saveSettings();
+    });
+});
+
+function updateBadges() {
+    document.getElementById('v-t').innerText = document.getElementById('marginTop').value + '%';
+    document.getElementById('v-b').innerText = document.getElementById('marginBottom').value + '%';
+    document.getElementById('v-s').innerText = document.getElementById('marginSide').value + '%';
+}
+
+function saveSettings() {
+    const settings = {};
+    sliders.forEach(id => settings[id] = document.getElementById(id).value);
+    localStorage.setItem('videoRecSettings', JSON.stringify(settings));
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem('videoRecSettings');
+    if(saved) {
+        const s = JSON.parse(saved);
+        sliders.forEach(id => { if(s[id]) document.getElementById(id).value = s[id]; });
+        updateBadges();
+    }
+}
+
+// Video Input Logic
+videoInput.addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+        const url = URL.createObjectURL(e.target.files[0]);
+        videoPlayer.src = url;
+        videoPlayer.onloadedmetadata = () => {
+            // Set canvas size to match video resolution for precision
+            overlayCanvas.width = videoPlayer.videoWidth;
+            overlayCanvas.height = videoPlayer.videoHeight;
+            procCanvas.width = videoPlayer.videoWidth;
+            procCanvas.height = videoPlayer.videoHeight;
+            drawOverlay();
+            statusEl.innerText = "Align Yellow Dots to center of cards, then Start.";
+            document.getElementById('processBtn').disabled = false;
+        };
+    }
+});
+
+// Helper: Get Grid Dimensions
+function getDims() {
+    // If video not loaded, default to some standard size for Preview
+    const w = videoPlayer.videoWidth || 1080;
+    const h = videoPlayer.videoHeight || 2400;
+    
+    const t = parseInt(document.getElementById('marginTop').value) / 100;
+    const b = parseInt(document.getElementById('marginBottom').value) / 100;
+    const s = parseInt(document.getElementById('marginSide').value) / 100;
+    
+    return {
+        startX: w * s,
+        endX: w * (1-s),
+        startY: h * t,
+        endY: h * (1-b),
+        w: w, h: h
+    };
+}
+
+// DRAW OVERLAY WITH PRECISION DOTS
+function drawOverlay() {
+    // Need dimensions even if video isn't playing
+    const d = getDims();
+    
+    // Ensure canvas matches the dimension logic
+    if(overlayCanvas.width !== d.w || overlayCanvas.height !== d.h) {
+        overlayCanvas.width = d.w;
+        overlayCanvas.height = d.h;
+    }
+
+    overlayCtx.clearRect(0,0,d.w,d.h);
+    
+    // Grid Setup
+    const boxW = (d.endX - d.startX) / COLS;
+    const boxH = (d.endY - d.startY) / ROWS;
+    
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            const x = d.startX + c*boxW;
+            const y = d.startY + r*boxH;
+            
+            // 1. Draw Cyan Box (The Detection Area)
+            overlayCtx.strokeStyle = "rgba(0, 255, 255, 0.5)"; 
+            overlayCtx.lineWidth = 2;
+            overlayCtx.strokeRect(x, y, boxW, boxH);
+
+            // 2. Draw Center Point (The TAP Coordinate)
+            const cx = x + boxW/2;
+            const cy = y + boxH/2;
+            
+            overlayCtx.fillStyle = "yellow"; // High contrast dot
+            overlayCtx.beginPath();
+            overlayCtx.arc(cx, cy, 4, 0, 2 * Math.PI); // 4px radius dot
+            overlayCtx.fill();
+        }
+    }
+}
+
+// Initialize overlay on load (in case bg image is used)
+window.onload = () => {
+    loadSettings();
+    drawOverlay();
+};
+
+// --- ANALYSIS LOOP ---
+document.getElementById('processBtn').onclick = async () => {
+    if(!cvReady) return;
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('btnDownload').style.display = 'none';
+    statusEl.innerText = "Scanning video...";
+    
+    // Reset Grid
+    currentStep = 1;
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+        c.innerText = (parseInt(c.id.split('-')[1])+1);
+    });
+
+    // Define Zones based on current sliders
+    zones = [];
+    const d = getDims();
+    const boxW = (d.endX - d.startX) / COLS;
+    const boxH = (d.endY - d.startY) / ROWS;
+
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            zones.push({
+                id: r*COLS + c,
+                x: Math.floor(d.startX + c*boxW + boxW*0.2), // Detection ROI (smaller than box)
+                y: Math.floor(d.startY + r*boxH + boxH*0.2),
+                w: Math.floor(boxW*0.6),
+                h: Math.floor(boxH*0.6),
+                cx: Math.floor(d.startX + c*boxW + boxW/2), // EXACT TAP X
+                cy: Math.floor(d.startY + r*boxH + boxH/2), // EXACT TAP Y
+                locked: false,
+                step: 0
+            });
+        }
+    }
+
+    let cap = new cv.VideoCapture(videoPlayer);
+    let gray = new cv.Mat();
+    let prevGray = new cv.Mat();
+    let diff = new cv.Mat();
+    
+    const interval = 0.1; 
+    let currentTime = 0;
+    let cooldown = 0;
+
+    async function processFrame() {
+        if(currentTime >= videoPlayer.duration) {
+            statusEl.innerText = "Analysis Complete! Check Precision Dots.";
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('btnDownload').style.display = 'block';
+            gray.delete(); prevGray.delete(); diff.delete();
+            return;
+        }
+
+        videoPlayer.currentTime = currentTime;
+        await new Promise(r => { videoPlayer.onseeked = r; });
+
+        procCtx.drawImage(videoPlayer, 0, 0);
+        let src = cv.imread(procCanvas);
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Re-draw overlay to show Locked/Found cards
+        overlayCtx.clearRect(0,0,d.w,d.h);
+        
+        // Draw standard grid (faint)
+        drawOverlay(); 
+
+        // Draw LOCKED zones (Red)
+        zones.filter(z=>z.locked).forEach(z => {
+            overlayCtx.strokeStyle = "#e74c3c"; 
+            overlayCtx.lineWidth = 4;
+            overlayCtx.strokeRect(z.x - 5, z.y - 5, z.w + 10, z.h + 10);
+            
+            // Draw Step Number
+            overlayCtx.fillStyle = "#e74c3c";
+            overlayCtx.font = "bold 50px Arial";
+            overlayCtx.fillText(z.step, z.cx - 15, z.cy + 15);
+        });
+
+        if(!prevGray.empty() && cooldown <= 0) {
+            cv.absdiff(gray, prevGray, diff);
+            cv.threshold(diff, diff, 40, 255, cv.THRESH_BINARY);
+            
+            let detected = [];
+            zones.forEach(z => {
+                if(z.locked) return;
+                let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
+                let changes = cv.countNonZero(roi);
+                roi.delete();
+                if(changes > (z.w*z.h*0.2)) detected.push(z);
+            });
+
+            if(detected.length > 0 && detected.length <= 2) {
+                let z = detected[0]; 
+                z.locked = true;
+                z.step = currentStep;
+                
+                let cell = document.getElementById(`c-${z.id}`);
                 cell.classList.add('detected');
                 cell.innerText = currentStep;
                 
                 currentStep++;
-                cooldown = 3; // Skip next 3 checks
+                cooldown = 3; 
             }
         }
 
