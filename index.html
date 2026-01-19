@@ -240,6 +240,13 @@ function drawOverlay() {
     overlayCtx.fillText(`${z.cxTarget},${z.cyTarget}`, z.x+5, z.y+15);
   });
 }
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+    drawOverlay(); // <- panggil ulang overlay supaya garis ikut bergerak
+  });
+});
 
 // --- Video load ---
 document.getElementById('videoInput').addEventListener('change', (e)=>{
