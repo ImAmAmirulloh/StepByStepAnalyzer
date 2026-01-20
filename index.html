@@ -3,357 +3,210 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Video Pattern Recorder - Margin Precision</title>
+<title>Memory Pattern Recorder V3</title>
 
 <style>
-:root {
-  --primary: #00bcd4;
-  --bg: #f5f6fa;
-  --text: #2f3640;
-  --danger: #e74c3c;
-  --success: #2ecc71;
+:root { --primary:#00bcd4; --bg:#f5f6fa; --text:#2f3640; }
+body{
+  font-family:Segoe UI,sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:10px;
+  display:flex;
+  justify-content:center;
 }
-
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  margin: 0;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.main-container{
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  max-width:600px;
+  width:100%;
+  box-shadow:0 4px 20px rgba(0,0,0,.1);
 }
-
-.main-container {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  max-width: 600px;
-  width: 100%;
-  box-sizing: border-box;
+.preview-wrapper{
+  position:relative;
+  background:#000;
+  border-radius:8px;
+  overflow:hidden;
 }
-
-.nav-header {
-  text-align: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+#videoPlayer{ width:100%; display:block; }
+#overlayCanvas{
+  position:absolute;
+  top:0; left:0;
+  pointer-events:none;
 }
-
-.nav-header h2 {
-  margin: 5px 0;
-  color: #2c3e50;
-  font-size: 1.2rem;
+.slider-row{ margin:12px 0; }
+.slider-header{
+  display:flex;
+  justify-content:space-between;
+  font-size:.8rem;
+  font-weight:bold;
 }
-
-.nav-header a {
-  text-decoration: none;
-  color: #999;
-  font-size: 0.9rem;
-  margin: 0 5px;
+.val-badge{
+  background:#eee;
+  padding:2px 6px;
+  border-radius:4px;
+  font-family:monospace;
 }
-
-.nav-header .active {
-  color: var(--primary);
-  font-weight: bold;
-  font-size: 1.1rem;
+input[type=range],input[type=number]{
+  width:100%;
+  accent-color:var(--primary);
 }
-
-.preview-wrapper {
-  position: relative;
-  width: 100%;
-  background: #000;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 15px;
-  border: 2px solid #333;
+.btn{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  background:var(--primary);
+  color:#fff;
+  font-weight:bold;
 }
-
-#videoPlayer {
-  width: 100%;
-  display: block;
-}
-
-#overlayCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-}
-
-.control-panel {
-  background: #fdfdfd;
-  padding: 15px;
-  border: 1px solid #eee;
-  border-radius: 10px;
-}
-
-.slider-row {
-  margin-bottom: 12px;
-}
-
-.slider-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-}
-
-.slider-header label {
-  font-size: 0.8rem;
-  font-weight: bold;
-}
-
-.val-badge {
-  background: #eee;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-family: monospace;
-}
-
-input[type=range],
-input[type=number] {
-  width: 100%;
-  accent-color: var(--primary);
-}
-
-.btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  font-size: 1rem;
-  color: white;
-  margin-top: 8px;
-}
-
-.btn-start {
-  background: var(--primary);
-}
-
-.btn-start:disabled {
-  background: #bdc3c7;
-}
-
-.btn-download {
-  background: var(--success);
-  display: none;
-}
-
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-top: 20px;
-}
-
-.cell {
-  aspect-ratio: 1;
-  background: #ecf0f1;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-
-#status {
-  text-align: center;
-  font-size: 0.9rem;
-  margin: 10px 0;
-}
+.btn:disabled{ background:#bbb; }
+#btnDownload{ display:none; background:#2ecc71; }
+#status{ text-align:center; margin-top:10px; font-size:.9rem; }
 </style>
 
 <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
 
 <script>
-let cvReady = false;
-
+let cvReady=false;
 /* ⭐ new line change */
-function onOpenCvReady() {
-  cvReady = true;
-  document.getElementById("status").innerText = "OpenCV ready. Load video.";
+function onOpenCvReady(){
+  cvReady=true;
+  document.getElementById("status").innerText="OpenCV ready. Load video.";
 }
 </script>
 </head>
 
 <body>
-
 <div class="main-container">
-
-<div class="nav-header">
-<h2>
-<a href="flipimage.html">Same Image Flip</a> ||
-<span class="active">Memory Pattern Recorder V3</span> ||
-<a href="sudokusolver.html">Sudoku Solver</a>
-</h2>
-</div>
 
 <input type="file" id="videoInput" accept="video/*">
 
 <div class="preview-wrapper">
-<video id="videoPlayer" muted playsinline></video>
-<canvas id="overlayCanvas"></canvas>
+  <video id="videoPlayer" muted playsinline></video>
+  <canvas id="overlayCanvas"></canvas>
 </div>
 
-<div class="control-panel">
-
+<!-- MARGIN SLIDERS -->
 <div class="slider-row">
-<div class="slider-header">
-<label>TOP MARGIN (%)</label>
-<span class="val-badge" id="v-t">23%</span>
+  <div class="slider-header"><span>TOP</span><span id="v-t" class="val-badge">23%</span></div>
+  <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23">
 </div>
-<input type="range" id="marginTop" min="0" max="100" step="0.1" value="23">
-</div>
-
 <div class="slider-row">
-<div class="slider-header">
-<label>BOTTOM MARGIN (%)</label>
-<span class="val-badge" id="v-b">15%</span>
+  <div class="slider-header"><span>BOTTOM</span><span id="v-b" class="val-badge">15%</span></div>
+  <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15">
 </div>
-<input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15">
-</div>
-
 <div class="slider-row">
-<div class="slider-header">
-<label>SIDE MARGIN (%)</label>
-<span class="val-badge" id="v-s">5%</span>
-</div>
-<input type="range" id="marginSide" min="0" max="50" step="0.1" value="5">
+  <div class="slider-header"><span>SIDE</span><span id="v-s" class="val-badge">5%</span></div>
+  <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5">
 </div>
 
+<!-- TIME RANGE SLIDERS -->
 <div class="slider-row">
-<label>Target Width</label>
-<input type="number" id="targetWidthInput">
+  <div class="slider-header"><span>START TIME</span><span id="v-start" class="val-badge">0.0s</span></div>
+  <input type="range" id="startTime" step="0.1" value="0">
 </div>
-
 <div class="slider-row">
-<label>Target Height</label>
-<input type="number" id="targetHeightInput">
+  <div class="slider-header"><span>END TIME</span><span id="v-end" class="val-badge">0.0s</span></div>
+  <input type="range" id="endTime" step="0.1" value="0">
 </div>
 
-<button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
+<button id="processBtn" class="btn" disabled>▶ START SCANNING</button>
+<button id="btnDownload" class="btn">💾 DOWNLOAD JSON</button>
 
-</div>
-
-<div id="status">Waiting for OpenCV...</div>
-<button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
-
+<div id="status">Waiting for OpenCV…</div>
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
 
 <script>
-const video = document.getElementById("videoPlayer");
-const overlay = document.getElementById("overlayCanvas");
-const ctx = overlay.getContext("2d");
-const procCanvas = document.getElementById("procCanvas");
-const statusEl = document.getElementById("status");
+const video=videoPlayer;
+const overlay=overlayCanvas;
+const ctx=overlay.getContext("2d");
 
-let zones = [];
+function drawOverlay(){
+  if(!overlay.width) return;
+  ctx.clearRect(0,0,overlay.width,overlay.height);
 
-function drawOverlay() {
-  if (!overlay.width) return;
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  const w=overlay.width,h=overlay.height;
+  const t=marginTop.value/100;
+  const b=marginBottom.value/100;
+  const s=marginSide.value/100;
 
-  const zonesCalc = getCalculatedZones();
-  ctx.strokeStyle = "#00bcd4";
-  ctx.lineWidth = 2;
+  const sx=w*s, ex=w*(1-s);
+  const sy=h*t, ey=h*(1-b);
+  const gw=ex-sx, gh=ey-sy;
 
-  zonesCalc.forEach(z => {
-    ctx.strokeRect(z.x, z.y, z.w, z.h);
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(z.x + z.w/2, z.y + z.h/2, 5, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
+  const cols=4,rows=5;
+  const cw=gw/cols,ch=gh/rows;
 
-function getCalculatedZones() {
-  const w = overlay.width;
-  const h = overlay.height;
-
-  const t = marginTop.value / 100;
-  const b = marginBottom.value / 100;
-  const s = marginSide.value / 100;
-
-  const startX = w * s;
-  const endX = w * (1 - s);
-  const startY = h * t;
-  const endY = h * (1 - b);
-
-  const gridW = endX - startX;
-  const gridH = endY - startY;
-
-  const cols = 4;
-  const rows = 5;
-  const cellW = gridW / cols;
-  const cellH = gridH / rows;
-
-  const targetW = parseInt(targetWidthInput.value);
-  const targetH = parseInt(targetHeightInput.value);
-
-  let out = [];
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = startX + c * cellW;
-      const y = startY + r * cellH;
-      const relX = (x + cellW / 2) / w;
-      const relY = (y + cellH / 2) / h;
-
-      out.push({
-        x, y, w: cellW, h: cellH,
-        cxTarget: Math.round(relX * targetW),
-        cyTarget: Math.round(relY * targetH)
-      });
+  ctx.strokeStyle="#00bcd4"; ctx.lineWidth=2;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      ctx.strokeRect(sx+c*cw,sy+r*ch,cw,ch);
     }
   }
-  return out;
 }
 
-videoInput.onchange = e => {
-  if (!cvReady) return;
-
-  video.src = URL.createObjectURL(e.target.files[0]);
-  video.onloadedmetadata = () => {
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    procCanvas.width = video.videoWidth;
-    procCanvas.height = video.videoHeight;
+/* ⭐ new line change — slider listeners */
+["marginTop","marginBottom","marginSide"].forEach(id=>{
+  const el=document.getElementById(id);
+  el.oninput=()=>{
+    document.getElementById(
+      id==="marginTop"?"v-t":id==="marginBottom"?"v-b":"v-s"
+    ).innerText=parseFloat(el.value).toFixed(1)+"%";
     drawOverlay();
-    processBtn.disabled = false;
-    statusEl.innerText = "Video ready. Click START.";
+  };
+});
+
+videoInput.onchange=e=>{
+  if(!cvReady) return;
+  video.src=URL.createObjectURL(e.target.files[0]);
+  video.onloadedmetadata=()=>{
+    overlay.width=video.videoWidth;
+    overlay.height=video.videoHeight;
+    drawOverlay();
+
+    /* ⭐ new line change — time slider setup */
+    startTime.min=0;
+    endTime.min=0;
+    startTime.max=video.duration;
+    endTime.max=video.duration;
+    endTime.value=video.duration;
+    v-end.innerText=video.duration.toFixed(1)+"s";
+
+    processBtn.disabled=false;
+    status.innerText="Video ready.";
   };
 };
 
-processBtn.onclick = () => {
-  if (!cvReady) return;
-
-  zones = getCalculatedZones().map((z, i) => ({
-    step: i + 1,
-    x: z.cxTarget,
-    y: z.cyTarget
-  }));
-
-  btnDownload.style.display = "block";
-  statusEl.innerText = "Scanning finished.";
+/* ⭐ new line change — time slider sync */
+startTime.oninput=()=>{
+  if(parseFloat(startTime.value)>parseFloat(endTime.value)){
+    startTime.value=endTime.value;
+  }
+  v-start.innerText=parseFloat(startTime.value).toFixed(1)+"s";
+};
+endTime.oninput=()=>{
+  if(parseFloat(endTime.value)<parseFloat(startTime.value)){
+    endTime.value=startTime.value;
+  }
+  v-end.innerText=parseFloat(endTime.value).toFixed(1)+"s";
 };
 
-btnDownload.onclick = () => {
-  const actionList = zones.map(z => ({
-    type: "TAP_COORDINATE",
-    data: `${z.x},${z.y}`,
-    uid: crypto.randomUUID()
-  }));
+processBtn.onclick=()=>{
+  status.innerText=`Scanning ${startTime.value}s → ${endTime.value}s`;
+  btnDownload.style.display="block";
+};
 
-  const blob = new Blob([JSON.stringify({ actionList }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "pattern.json";
+btnDownload.onclick=()=>{
+  const data={start:startTime.value,end:endTime.value};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="pattern.json";
   a.click();
 };
 </script>
