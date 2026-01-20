@@ -253,614 +253,6 @@
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
-<!--
-<script>
-let cvReady = false;
-let zones = []; 
-let currentStep = 1;
-
-// Initialize Grid UI (20 Cells for 4x5)
-const gridEl = document.getElementById('grid');
-for(let i=0; i<20; i++) {
-    let d = document.createElement('div');
-    d.className = 'cell';
-    d.id = `c-${i}`;
-    d.innerText = i + 1;
-    gridEl.appendChild(d);
-}
-
-const videoPlayer = document.getElementById('videoPlayer');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const procCanvas = document.getElementById('procCanvas');
-const procCtx = procCanvas.getContext('2d');
-const statusEl = document.getElementById('status');
-
-// --- LOCAL STORAGE & INIT ---
-window.addEventListener('load', () => {
-    loadSliderSettings();
-});
-
-function onOpenCvReady() {
-    cvReady = true;
-    statusEl.innerText = "Ready. Select video.";
-}
-
-function saveSliderSettings() {
-    const settings = {
-        top: document.getElementById('marginTop').value,
-        bottom: document.getElementById('marginBottom').value,
-        side: document.getElementById('marginSide').value
-    };
-    localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
-}
-
-function loadSliderSettings() {
-    const saved = localStorage.getItem('patternRecorderMargins');
-    if (saved) {
-        const settings = JSON.parse(saved);
-        if(settings.top) {
-            document.getElementById('marginTop').value = settings.top;
-            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
-        }
-        if(settings.bottom) {
-            document.getElementById('marginBottom').value = settings.bottom;
-            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
-        }
-        if(settings.side) {
-            document.getElementById('marginSide').value = settings.side;
-            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
-        }
-    }
-}
-
-// Sliders listener
-['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
-    document.getElementById(id).addEventListener('input', (e) => {
-        // Update badge text
-        const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
-        document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
-        saveSliderSettings();
-        drawOverlay();
-    });
-});
-
-document.getElementById('videoInput').addEventListener('change', (e) => {
-    if(e.target.files[0]) {
-        videoPlayer.src = URL.createObjectURL(e.target.files[0]);
-        videoPlayer.onloadedmetadata = () => {
-            overlayCanvas.width = videoPlayer.videoWidth;
-            overlayCanvas.height = videoPlayer.videoHeight;
-            procCanvas.width = videoPlayer.videoWidth;
-            procCanvas.height = videoPlayer.videoHeight;
-            drawOverlay();
-            document.getElementById('processBtn').disabled = false;
-        };
-    }
-});
-
-function getCalculatedZones() {
-    if(overlayCanvas.width === 0) return [];
-    
-    const w = overlayCanvas.width;
-    const h = overlayCanvas.height;
-    
-    // Get margin percentages
-    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
-    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
-    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
-    
-    // Calculate Grid Area
-    const startX = w * sPct;
-    const endX = w * (1 - sPct);
-    const startY = h * tPct;
-    const endY = h * (1 - bPct);
-    
-    const gridW = endX - startX;
-    const gridH = endY - startY;
-    
-    // 4 Columns, 5 Rows
-    const cellW = gridW / 4;
-    const cellH = gridH / 5;
-    
-    let calculatedZones = [];
-    
-    for(let r=0; r<5; r++) {
-        for(let c=0; c<4; c++) {
-            const zx = startX + (c * cellW);
-            const zy = startY + (r * cellH);
-            const cx = Math.floor(zx + cellW/2);
-            const cy = Math.floor(zy + cellH/2);
-            
-            calculatedZones.push({
-                x: zx, y: zy, w: cellW, h: cellH,
-                cx: cx, cy: cy
-            });
-        }
-    }
-    return calculatedZones;
-}
-
-function drawOverlay() {
-    if(overlayCanvas.width === 0) return;
-    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
-    
-    const zones = getCalculatedZones();
-    
-    overlayCtx.strokeStyle = "#00bcd4"; // Cyan
-    overlayCtx.lineWidth = 3;
-    
-    zones.forEach(z => {
-        // Draw the full cell box
-        overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
-        
-        // Draw center dot (target)
-        overlayCtx.fillStyle = "yellow";
-        overlayCtx.beginPath();
-        overlayCtx.arc(z.cx, z.cy, 5, 0, Math.PI * 2);
-        overlayCtx.fill();
-    });
-}
-
-document.getElementById('processBtn').onclick = async () => {
-    document.getElementById('processBtn').disabled = true;
-    document.getElementById('btnDownload').style.display = 'none';
-    currentStep = 1;
-    document.querySelectorAll('.cell').forEach(c => {
-        c.className = 'cell';
-        c.innerText = c.id.replace('c-', '') * 1 + 1; 
-    });
-
-    const calcZones = getCalculatedZones();
-    zones = calcZones.map((z, i) => ({
-        id: i,
-        // The center X,Y is what we want to tap
-        outputData: `${z.cx},${z.cy}`, 
-        // OpenCV ROI (Region of Interest) - small box around center for detection
-        x: Math.round(z.cx - 40), 
-        y: Math.round(z.cy - 40), 
-        w: 80, h: 80,
-        locked: false, step: 0
-    }));
-
-    let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
-    let currentTime = 0, interval = 0.1, cooldown = 0;
-
-    async function processFrame() {
-        if(currentTime >= videoPlayer.duration) {
-            statusEl.innerText = "Scanning Finished!";
-            document.getElementById('processBtn').disabled = false;
-            document.getElementById('btnDownload').style.display = 'block';
-            gray.delete(); prevGray.delete(); diff.delete();
-            return;
-        }
-        videoPlayer.currentTime = currentTime;
-        await new Promise(r => videoPlayer.onseeked = r);
-        procCtx.drawImage(videoPlayer, 0, 0);
-        let src = cv.imread(procCanvas);
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-        if(!prevGray.empty() && cooldown <= 0) {
-            cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
-            let detected = [];
-            zones.forEach(z => {
-                if(z.locked) return;
-                // Safe ROI check
-                if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
-                    let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
-                    if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
-                    roi.delete();
-                }
-            });
-            if(detected.length > 0) {
-                let target = detected[0];
-                target.locked = true;
-                target.step = currentStep;
-                
-                let cell = document.getElementById(`c-${target.id}`);
-                cell.classList.add('detected');
-                cell.innerText = currentStep;
-                
-                currentStep++;
-                cooldown = 5; 
-            }
-        }
-        if(cooldown > 0) cooldown--;
-        gray.copyTo(prevGray);
-        src.delete();
-        currentTime += interval;
-        requestAnimationFrame(processFrame);
-    }
-    processFrame();
-};
-
-document.getElementById('btnDownload').onclick = () => {
-    const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
-    
-    const actionList = steps.map(s => ({
-        "data": s.outputData, 
-        "extras": [
-            { "data": String(s.step), "id": "extra_coordinate_description" },
-            { "data": 120, "id": "extra_delay_before_next_action" }
-        ],
-        "flags": 0,
-        "type": "TAP_COORDINATE",
-        "uid": crypto.randomUUID()
-    }));
-
-    const keymapData = {
-        "app_version": 63, 
-        "keymap_db_version": 13,
-        "fingerprint_map_list": [
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
-        ],
-        "keymap_list": [{
-            "actionList": actionList, 
-            "constraintList": [], 
-            "constraintMode": 1, 
-            "flags": 0, 
-            "id": 27, 
-            "isEnabled": true,
-            "trigger": {
-                "extras": [], 
-                "flags": 1,
-                "keys": [{ 
-                    "clickType": 2, 
-                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
-                    "flags": 0, 
-                    "keyCode": 24, 
-                    "uid": crypto.randomUUID() 
-                }],
-                "mode": 2
-            },
-            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
-        }]
-    };
-
-    const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
-    a.download = `Pattern_Result_${timestamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-};
-</script>
-
-<script>
-let cvReady = false;
-let zones = []; 
-let currentStep = 1;
-
-// Initialize Grid UI (20 Cells for 4x5)
-const gridEl = document.getElementById('grid');
-for(let i=0; i<20; i++) {
-    let d = document.createElement('div');
-    d.className = 'cell';
-    d.id = `c-${i}`;
-    d.innerText = i + 1;
-    gridEl.appendChild(d);
-}
-
-const videoPlayer = document.getElementById('videoPlayer');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const procCanvas = document.getElementById('procCanvas');
-const procCtx = procCanvas.getContext('2d');
-const statusEl = document.getElementById('status');
-
-// Your fixed coordinates as center points (4x5 grid)
-const FIXED_CENTERS = [
-    // Row 1
-    [170, 845], [480, 845], [790, 845], [1100, 845],
-    // Row 2  
-    [170, 1145], [480, 1145], [790, 1145], [1100, 1145],
-    // Row 3
-    [170, 1445], [480, 1445], [790, 1445], [1100, 1445],
-    // Row 4
-    [170, 1745], [480, 1745], [790, 1745], [1100, 1745],
-    // Row 5
-    [170, 2045], [480, 2045], [790, 2045], [1100, 2045]
-];
-
-// --- LOCAL STORAGE & INIT ---
-window.addEventListener('load', () => {
-    loadSliderSettings();
-});
-
-function onOpenCvReady() {
-    cvReady = true;
-    statusEl.innerText = "Ready. Select video.";
-}
-
-function saveSliderSettings() {
-    const settings = {
-        top: document.getElementById('marginTop').value,
-        bottom: document.getElementById('marginBottom').value,
-        side: document.getElementById('marginSide').value
-    };
-    localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
-}
-
-function loadSliderSettings() {
-    const saved = localStorage.getItem('patternRecorderMargins');
-    if (saved) {
-        const settings = JSON.parse(saved);
-        if(settings.top) {
-            document.getElementById('marginTop').value = settings.top;
-            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
-        }
-        if(settings.bottom) {
-            document.getElementById('marginBottom').value = settings.bottom;
-            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
-        }
-        if(settings.side) {
-            document.getElementById('marginSide').value = settings.side;
-            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
-        }
-    }
-}
-
-// Sliders listener
-['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
-    document.getElementById(id).addEventListener('input', (e) => {
-        const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
-        document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
-        saveSliderSettings();
-        drawOverlay();
-    });
-});
-
-document.getElementById('videoInput').addEventListener('change', (e) => {
-    if(e.target.files[0]) {
-        videoPlayer.src = URL.createObjectURL(e.target.files[0]);
-        videoPlayer.onloadedmetadata = () => {
-            overlayCanvas.width = videoPlayer.videoWidth;
-            overlayCanvas.height = videoPlayer.videoHeight;
-            procCanvas.width = videoPlayer.videoWidth;
-            procCanvas.height = videoPlayer.videoHeight;
-            drawOverlay();
-            document.getElementById('processBtn').disabled = false;
-            statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
-        };
-    }
-});
-
-function getCalculatedZones() {
-    if(overlayCanvas.width === 0) return [];
-    
-    const w = overlayCanvas.width;
-    const h = overlayCanvas.height;
-    
-    // Get margin percentages
-    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
-    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
-    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
-    
-    // Calculate Grid Area
-    const startX = w * sPct;
-    const endX = w * (1 - sPct);
-    const startY = h * tPct;
-    const endY = h * (1 - bPct);
-    
-    const gridW = endX - startX;
-    const gridH = endY - startY;
-    
-    // 4 Columns, 5 Rows
-    const cellW = gridW / 4;
-    const cellH = gridH / 5;
-    
-    let calculatedZones = [];
-    
-    for(let r=0; r<5; r++) {
-        for(let c=0; c<4; c++) {
-            const zx = startX + (c * cellW);
-            const zy = startY + (r * cellH);
-            
-            // Use FIXED_CENTERS as the center points, but adjust based on video resolution
-            // We need to scale the fixed coordinates to match the current video dimensions
-            const fixedCenter = FIXED_CENTERS[r * 4 + c];
-            
-            // Scale factors based on typical game resolution (assuming 1280x? for the fixed coordinates)
-            // We'll calculate scaling based on the grid area
-            const scaleX = gridW / (1100 - 170); // Max X - Min X from your coordinates
-            const scaleY = gridH / (2045 - 845); // Max Y - Min Y from your coordinates
-            
-            // Calculate scaled center position within the grid
-            const relX = (fixedCenter[0] - 170) / (1100 - 170); // Relative position (0 to 1)
-            const relY = (fixedCenter[1] - 845) / (2045 - 845); // Relative position (0 to 1)
-            
-            const cx = Math.floor(startX + (relX * gridW));
-            const cy = Math.floor(startY + (relY * gridH));
-            
-            calculatedZones.push({
-                x: zx, y: zy, w: cellW, h: cellH,
-                cx: cx, cy: cy,
-                fixedX: fixedCenter[0], // Store original fixed X
-                fixedY: fixedCenter[1]  // Store original fixed Y
-            });
-        }
-    }
-    return calculatedZones;
-}
-
-function drawOverlay() {
-    if(overlayCanvas.width === 0) return;
-    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
-    
-    const zones = getCalculatedZones();
-    
-    overlayCtx.strokeStyle = "#00bcd4"; // Cyan for grid
-    overlayCtx.lineWidth = 2;
-    
-    zones.forEach((z, i) => {
-        // Draw the full cell box
-        overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
-        
-        // Draw center dot (target) - RED for better visibility
-        overlayCtx.fillStyle = "#ff0000";
-        overlayCtx.beginPath();
-        overlayCtx.arc(z.cx, z.cy, 8, 0, Math.PI * 2);
-        overlayCtx.fill();
-        
-        // Draw fixed coordinate text
-        overlayCtx.fillStyle = "#ffffff";
-        overlayCtx.font = "12px Arial";
-        overlayCtx.fillText(`${z.fixedX},${z.fixedY}`, z.x + 5, z.y + 15);
-    });
-}
-
-document.getElementById('processBtn').onclick = async () => {
-    document.getElementById('processBtn').disabled = true;
-    document.getElementById('btnDownload').style.display = 'none';
-    currentStep = 1;
-    document.querySelectorAll('.cell').forEach(c => {
-        c.className = 'cell';
-        c.innerText = c.id.replace('c-', '') * 1 + 1; 
-    });
-
-    const calcZones = getCalculatedZones();
-    zones = calcZones.map((z, i) => ({
-        id: i,
-        // Use the FIXED coordinates for output (not the calculated cx,cy)
-        outputData: `${z.fixedX},${z.fixedY}`,
-        // OpenCV ROI - use the calculated center for detection
-        x: Math.round(z.cx - 60), // Larger detection area
-        y: Math.round(z.cy - 60), 
-        w: 120, h: 120,
-        // Store both calculated and fixed coordinates
-        calcX: z.cx,
-        calcY: z.cy,
-        fixedX: z.fixedX,
-        fixedY: z.fixedY,
-        locked: false, step: 0
-    }));
-
-    let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
-    let currentTime = 0, interval = 0.1, cooldown = 0;
-
-    async function processFrame() {
-        if(currentTime >= videoPlayer.duration) {
-            statusEl.innerText = "Scanning Finished!";
-            document.getElementById('processBtn').disabled = false;
-            document.getElementById('btnDownload').style.display = 'block';
-            gray.delete(); prevGray.delete(); diff.delete();
-            return;
-        }
-        videoPlayer.currentTime = currentTime;
-        await new Promise(r => videoPlayer.onseeked = r);
-        procCtx.drawImage(videoPlayer, 0, 0);
-        let src = cv.imread(procCanvas);
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-        if(!prevGray.empty() && cooldown <= 0) {
-            cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
-            let detected = [];
-            zones.forEach(z => {
-                if(z.locked) return;
-                // Safe ROI check
-                if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
-                    let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
-                    if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
-                    roi.delete();
-                }
-            });
-            if(detected.length > 0) {
-                let target = detected[0];
-                target.locked = true;
-                target.step = currentStep;
-                
-                let cell = document.getElementById(`c-${target.id}`);
-                cell.classList.add('detected');
-                cell.innerText = currentStep;
-                
-                // Update status with both calculated and fixed coordinates
-                statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
-                
-                currentStep++;
-                cooldown = 5; 
-            }
-        }
-        if(cooldown > 0) cooldown--;
-        gray.copyTo(prevGray);
-        src.delete();
-        currentTime += interval;
-        requestAnimationFrame(processFrame);
-    }
-    processFrame();
-};
-
-document.getElementById('btnDownload').onclick = () => {
-    const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
-    
-    const actionList = steps.map(s => ({
-        "data": `${s.fixedX},${s.fixedY}`, // Use FIXED coordinates for output
-        "extras": [
-            { "data": String(s.step), "id": "extra_coordinate_description" },
-            { "data": 120, "id": "extra_delay_before_next_action" }
-        ],
-        "flags": 0,
-        "type": "TAP_COORDINATE",
-        "uid": crypto.randomUUID()
-    }));
-
-    const keymapData = {
-        "app_version": 63, 
-        "keymap_db_version": 13,
-        "fingerprint_map_list": [
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
-            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
-        ],
-        "keymap_list": [{
-            "actionList": actionList, 
-            "constraintList": [], 
-            "constraintMode": 1, 
-            "flags": 0, 
-            "id": 27, 
-            "isEnabled": true,
-            "trigger": {
-                "extras": [], 
-                "flags": 1,
-                "keys": [{ 
-                    "clickType": 2, 
-                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
-                    "flags": 0, 
-                    "keyCode": 24, 
-                    "uid": crypto.randomUUID() 
-                }],
-                "mode": 2
-            },
-            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
-        }]
-    };
-
-    const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
-    a.download = `Pattern_Result_${timestamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-};
-</script>
--->
 <script>
 let cvReady = false;
 let zones = [];
@@ -1048,20 +440,37 @@ function drawOverlay() {
   });
 }
 
+let currentTime = 0;
 // Event Listeners Slider Waktu
 sStart.addEventListener('input', () => {
-    if(parseFloat(sStart.value) > parseFloat(sEnd.value)) sStart.value = sEnd.value;
-    document.getElementById("vStart").innerText = parseFloat(sStart.value).toFixed(1) + "s";
-    videoPlayer.currentTime = sStart.value; // Preview frame
+    // Pastikan Start tidak melewati End
+    if(parseFloat(sStart.value) > parseFloat(sEnd.value)) {
+        sStart.value = sEnd.value;
+    }
+    
+    const val = parseFloat(sStart.value);
+    document.getElementById("vStart").innerText = val.toFixed(1) + "s";
+    
+    // Sinkronkan tampilan video agar nampak bergerak saat digeser
+    videoPlayer.currentTime = val; 
 });
 
+// Slider Waktu Selesai (End)
 sEnd.addEventListener('input', () => {
-    if(parseFloat(sEnd.value) < parseFloat(sStart.value)) sEnd.value = sStart.value;
-    document.getElementById("vEnd").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
-    videoPlayer.currentTime = sEnd.value; // Preview frame
+    // Pastikan End tidak kurang dari Start
+    if(parseFloat(sEnd.value) < parseFloat(sStart.value)) {
+        sEnd.value = sStart.value;
+    }
+    
+    const val = parseFloat(sEnd.value);
+    document.getElementById("vEnd").innerText = val.toFixed(1) + "s";
+    
+    // Sinkronkan tampilan video (opsional, agar tahu batas akhir scan)
+    videoPlayer.currentTime = val;
 });
 
 //PROSES SCANNING
+/*
 document.getElementById('processBtn').onclick = async () => {
   document.getElementById('processBtn').disabled = true;
   document.getElementById('btnDownload').style.display = 'none';
@@ -1097,10 +506,9 @@ document.getElementById('processBtn').onclick = async () => {
   prevGray = new cv.Mat(),
   diff = new cv.Mat();
 
-  // Timing and detection parameters
-  //let currentTime = 0;
-  // Set Waktu Awal
-  let currentTime = parseFloat(sStart.value);
+  //Timing and detection parameters
+  //Set Waktu Awal
+  let startTimeVal = parseFloat(sStart.value);
   const endTimeVal = parseFloat(sEnd.value);
   const interval = 0.1; // seconds between samples
   const skipFactor = 5; // skip this many intervals after a detection
@@ -1137,7 +545,9 @@ document.getElementById('processBtn').onclick = async () => {
     }
 
     // Seek and draw
-    await seekTo(currentTime);
+    //await seekTo(currentTime);
+    videoPlayer.currentTime = startTimeVal;
+    await new Promise(r => { videoPlayer.onseeked = r; });
     procCtx.drawImage(videoPlayer, 0, 0, procCanvas.width, procCanvas.height);
 
     let src = cv.imread(procCanvas);
@@ -1204,8 +614,134 @@ document.getElementById('processBtn').onclick = async () => {
   }
 
   // Start scanning from 0
-  currentTime = 0;
+  currentTime = sStart.value;
   processFrame();
+};
+*/
+
+document.getElementById('processBtn').onclick = async () => {
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('btnDownload').style.display = 'none';
+    statusEl.innerText = "Scanning berjalan...";
+    
+    // Reset Grid Visual
+    currentStep = 1;
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+        const idx = parseInt(c.id.split('-')[1], 10);
+        c.innerText = idx + 1;
+    });
+
+    const calcZones = getCalculatedZones();
+    zones = calcZones.map((z, i) => ({
+        id: i,
+        outputData: `${z.fixedX},${z.fixedY}`,
+        x: Math.round(z.x),
+        y: Math.round(z.y),
+        w: Math.round(z.w),
+        h: Math.round(z.h),
+        calcX: z.cx,
+        calcY: z.cy,
+        fixedX: z.fixedX,
+        fixedY: z.fixedY,
+        locked: false,
+        step: 0
+    }));
+
+    // OpenCV mats
+    let gray = new cv.Mat(),
+    prevGray = new cv.Mat(),
+    diff = new cv.Mat();
+
+    // Ambil nilai dari slider saat tombol ditekan
+    let startTimeVal = parseFloat(sStart.value); 
+    const endTimeVal = parseFloat(sEnd.value);
+    let currentTimeScan = startTimeVal; // Gunakan variabel lokal agar tidak bentrok
+
+    const interval = 0.1; 
+    const skipFactor = 5; 
+    const roiW = 120, roiH = 120;
+    const motionThreshold = 30; 
+    const motionRatio = 0.08; 
+
+    async function processFrame() {
+        if (!videoPlayer.duration || isNaN(videoPlayer.duration)) {
+            statusEl.innerText = "Video not ready.";
+            document.getElementById('processBtn').disabled = false;
+            return;
+        }
+
+        // BERHENTI jika sudah mencapai batas slider akhir atau durasi video
+        if (currentTimeScan >= endTimeVal || currentTimeScan >= videoPlayer.duration) {
+            statusEl.innerText = "Scanning Finished!";
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('btnDownload').style.display = 'block';
+            gray.delete(); prevGray.delete(); diff.delete();
+            return;
+        }
+
+        // UPDATE WAKTU VIDEO SESUAI PROSES SCAN
+        videoPlayer.currentTime = currentTimeScan;
+        await new Promise(r => { videoPlayer.onseeked = r; });
+        
+        procCtx.drawImage(videoPlayer, 0, 0, procCanvas.width, procCanvas.height);
+
+        let src = cv.imread(procCanvas);
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        if (prevGray.empty()) {
+            gray.copyTo(prevGray);
+            src.delete();
+            currentTimeScan += interval;
+            requestAnimationFrame(processFrame);
+            return;
+        }
+
+        cv.absdiff(gray, prevGray, diff);
+        cv.threshold(diff, diff, motionThreshold, 255, cv.THRESH_BINARY);
+
+        let detected = [];
+        zones.forEach(z => {
+            if (z.locked) return;
+            let rx = Math.round(z.calcX - roiW / 2);
+            let ry = Math.round(z.calcY - roiH / 2);
+            rx = Math.max(0, Math.min(rx, diff.cols - roiW));
+            ry = Math.max(0, Math.min(ry, diff.rows - roiH));
+
+            if (rx >= 0 && ry >= 0 && (rx + roiW) <= diff.cols && (ry + roiH) <= diff.rows) {
+                let roi = diff.roi(new cv.Rect(rx, ry, roiW, roiH));
+                const nonZero = cv.countNonZero(roi);
+                roi.delete();
+                if (nonZero > (roiW * roiH * motionRatio)) {
+                    detected.push({ zone: z, nonZero });
+                }
+            }
+        });
+
+        if (detected.length > 0) {
+            detected.sort((a, b) => b.nonZero - a.nonZero);
+            let target = detected[0].zone;
+            target.locked = true;
+            target.step = currentStep;
+
+            let cell = document.getElementById(`c-${target.id}`);
+            cell.classList.add('detected');
+            cell.innerText = currentStep;
+
+            statusEl.innerText = `Step ${currentStep}: Detected at ${target.fixedX},${target.fixedY}`;
+
+            currentStep++;
+            currentTimeScan += (interval * skipFactor); 
+        } else {
+            currentTimeScan += interval;
+        }
+
+        gray.copyTo(prevGray);
+        src.delete();
+        requestAnimationFrame(processFrame);
+    }
+
+    processFrame();
 };
 
 // Download logic unchanged
