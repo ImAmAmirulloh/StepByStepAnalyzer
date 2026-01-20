@@ -1,87 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pattern Recorder - Complete V5</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Video Pattern Recorder - Margin Precision</title>
+    <style>
+        :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        
+        .main-container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            max-width: 600px; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
 
-<style>
-    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
-    body { 
-        font-family: 'Segoe UI', sans-serif; 
-        background: var(--bg); color: var(--text); 
-        margin: 0; padding: 10px; 
-        display: flex; flex-direction: column; align-items: center; 
-    }
-    
-    .main-container { 
-        background: white; padding: 20px; border-radius: 12px; 
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-        max-width: 600px; width: 100%; box-sizing: border-box; 
-    }
+        /* Nav Header */
+        .nav-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .nav-header h2 { margin: 5px 0 5px 0; color: #2c3e50; font-size: 1.2rem; }
+        .nav-header a { text-decoration: none; color: #999; font-size: 0.9rem; margin: 0 5px; transition: color 0.2s; }
+        .nav-header a:hover { color: var(--primary); }
+        .nav-header .active { color: var(--primary); font-weight: bold; font-size: 1.1rem; }
 
-    .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .nav-header h2 { margin: 0; color: #2c3e50; }
+        /* Preview */
+        .preview-wrapper { 
+            position: relative; 
+            width: 100%; 
+            background: #000; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            line-height: 0; 
+            border: 2px solid #333;
+        }
+        #videoPlayer { width: 100%; display: block; }
+        #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-    .preview-wrapper { 
-        position: relative; width: 100%; background: #000; 
-        border-radius: 8px; overflow: hidden; margin-bottom: 15px; 
-        border: 2px solid #333; line-height: 0;
-    }
-    #videoPlayer { width: 100%; display: block; }
-    #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        /* Controls */
+        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
+        .slider-row { margin-bottom: 12px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
+        .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
+        .btn-start { background: var(--primary); }
+        .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-download { background: var(--success); margin-top: 15px; display: none; }
+        
+        .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; width: 100%; }
+        .cell { aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #bdc3c7; }
+        .cell.detected { background: white; border: 2px solid var(--danger); color: var(--danger); }
 
-    /* SLIDERS AREA */
-    .control-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; }
-    .slider-section { margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
-    .slider-section:last-child { border-bottom: none; margin-bottom: 0; }
-    .slider-title { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; text-transform: uppercase; margin-bottom: 8px; display: block; }
-    
-    .slider-row { margin-bottom: 8px; }
-    .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
-    .val-badge { background: #e1e1e1; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
-    input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
 
-    /* GRID VISUALIZATION */
-    .results-grid { 
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; 
-        margin-top: 15px; width: 100%; 
-    }
-    .cell { 
-        aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; 
-        display: flex; align-items: center; justify-content: center; 
-        font-weight: bold; font-size: 1.1rem; color: #bdc3c7; 
-        transition: all 0.2s;
-    }
-    .cell.detected { 
-        background: white; border: 2px solid var(--danger); 
-        color: var(--danger); box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
-    }
-
-    /* BUTTONS */
-    .btn { 
-        width: 100%; padding: 12px; border: none; border-radius: 6px; 
-        font-weight: bold; cursor: pointer; font-size: 1rem; color: white; 
-        margin-top: 5px; transition: 0.2s;
-    }
-    .btn-start { background: var(--primary); }
-    .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-    .btn-download { background: var(--success); margin-top: 15px; display: none; }
-    .btn:hover:not(:disabled) { opacity: 0.9; }
-
-    #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
-</style>
-<script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
+        #videoInput { margin-bottom: 15px; width: 100%; }
+        input[type="file"]::file-selector-button {
+            background-color: var(--primary); color: white; border: none; padding: 8px 12px;
+            border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;
+        }
+    </style>
+    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
 <div class="main-container">
     <div class="nav-header">
-        <h2>Pattern Recorder V5</h2>
-        <p style="font-size:0.8rem; color:#999;">Fitur Lengkap: Slider Waktu & Margin</p>
+        <h2>
+            <a href="flipimage.html">Same Image Flip</a> ||
+            <span class="active">Memory Pattern Recorder V3</span> || 
+            <a href="sudokusolver.html">Sudoku Solver</a>
+        </h2>
+        <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Adjust margins until green boxes match cards</div>
     </div>
 
-    <input type="file" id="videoInput" accept="video/*" style="width:100%; margin-bottom:10px;">
+    <input type="file" id="videoInput" accept="video/*">
     
     <div class="preview-wrapper">
         <video id="videoPlayer" muted playsinline></video>
@@ -89,135 +95,149 @@
     </div>
 
     <div class="control-panel">
-        <div class="slider-section">
-            <span class="slider-title">Pengaturan Area (Margin)</span>
-            <div class="slider-row">
-                <div class="slider-header"><span>ATAS (Top)</span><span id="v-t" class="val-badge">23%</span></div>
-                <input type="range" id="marginTop" min="0" max="50" step="0.1" value="23">
-            </div>
-            <div class="slider-row">
-                <div class="slider-header"><span>BAWAH (Bottom)</span><span id="v-b" class="val-badge">15%</span></div>
-                <input type="range" id="marginBottom" min="0" max="50" step="0.1" value="15">
-            </div>
-            <div class="slider-row">
-                <div class="slider-header"><span>SAMPING (Side)</span><span id="v-s" class="val-badge">5%</span></div>
-                <input type="range" id="marginSide" min="0" max="30" step="0.1" value="5">
-            </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
+            <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23.0">
         </div>
-
-        <div class="slider-section">
-            <span class="slider-title">Pengaturan Waktu Video</span>
-            <div class="slider-row">
-                <div class="slider-header"><span>MULAI (Start)</span><span id="v-start" class="val-badge">0.0s</span></div>
-                <input type="range" id="startTime" step="0.1" value="0">
-            </div>
-            <div class="slider-row">
-                <div class="slider-header"><span>SELESAI (End)</span><span id="v-end" class="val-badge">0.0s</span></div>
-                <input type="range" id="endTime" step="0.1" value="0">
-            </div>
+        <div class="slider-row">
+            <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
+            <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15.0">
         </div>
-
-        <button id="processBtn" class="btn btn-start" disabled>▶ MULAI SCAN</button>
+        <div class="slider-row">
+            <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
+            <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5.0">
+        </div>
+        <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
     </div>
 
-    <div id="status">Menunggu OpenCV...</div>
+    <div id="status">Waiting for OpenCV...</div>
     <div id="grid" class="results-grid"></div>
-    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON KEYMAPPER</button>
+    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
-
+<!--
 <script>
 let cvReady = false;
 let zones = []; 
 let currentStep = 1;
-const ROWS = 5;
-const COLS = 4;
 
-// Inisialisasi Grid 1-20
+// Initialize Grid UI (20 Cells for 4x5)
 const gridEl = document.getElementById('grid');
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
-    d.className = 'cell'; d.id = `c-${i}`; d.innerText = i + 1;
+    d.className = 'cell';
+    d.id = `c-${i}`;
+    d.innerText = i + 1;
     gridEl.appendChild(d);
 }
 
-// Elemen DOM
-const video = document.getElementById('videoPlayer');
-const overlay = document.getElementById('overlayCanvas');
-const ctx = overlay.getContext('2d');
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
 const procCanvas = document.getElementById('procCanvas');
-const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+const procCtx = procCanvas.getContext('2d');
 const statusEl = document.getElementById('status');
 
-// Sliders DOM
-const sTop = document.getElementById('marginTop');
-const sBot = document.getElementById('marginBottom');
-const sSide = document.getElementById('marginSide');
-const sStart = document.getElementById('startTime');
-const sEnd = document.getElementById('endTime');
+// --- LOCAL STORAGE & INIT ---
+window.addEventListener('load', () => {
+    loadSliderSettings();
+});
 
 function onOpenCvReady() {
     cvReady = true;
-    statusEl.innerText = "Siap. Pilih video.";
+    statusEl.innerText = "Ready. Select video.";
 }
 
-// Load Video
-document.getElementById('videoInput').addEventListener('change', (e) => {
-    if(!e.target.files[0]) return;
-    video.src = URL.createObjectURL(e.target.files[0]);
-    video.onloadedmetadata = () => {
-        overlay.width = video.videoWidth;
-        overlay.height = video.videoHeight;
-        procCanvas.width = video.videoWidth;
-        procCanvas.height = video.videoHeight;
-        
-        // Setup Slider Waktu
-        sStart.max = video.duration;
-        sEnd.max = video.duration;
-        sEnd.value = video.duration;
-        document.getElementById('v-end').innerText = video.duration.toFixed(1) + "s";
-        
-        drawOverlay();
-        document.getElementById('processBtn').disabled = false;
-        statusEl.innerText = "Video dimuat. Atur margin dan waktu.";
+function saveSliderSettings() {
+    const settings = {
+        top: document.getElementById('marginTop').value,
+        bottom: document.getElementById('marginBottom').value,
+        side: document.getElementById('marginSide').value
     };
+    localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
+}
+
+function loadSliderSettings() {
+    const saved = localStorage.getItem('patternRecorderMargins');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        if(settings.top) {
+            document.getElementById('marginTop').value = settings.top;
+            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
+        }
+        if(settings.bottom) {
+            document.getElementById('marginBottom').value = settings.bottom;
+            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
+        }
+        if(settings.side) {
+            document.getElementById('marginSide').value = settings.side;
+            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
+        }
+    }
+}
+
+// Sliders listener
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+        // Update badge text
+        const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+        document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+        saveSliderSettings();
+        drawOverlay();
+    });
 });
 
-// === LOGIKA GRID & OVERLAY ===
-function getZoneCalculations() {
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    const t = parseFloat(sTop.value) / 100;
-    const b = parseFloat(sBot.value) / 100;
-    const s = parseFloat(sSide.value) / 100;
+document.getElementById('videoInput').addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+        videoPlayer.src = URL.createObjectURL(e.target.files[0]);
+        videoPlayer.onloadedmetadata = () => {
+            overlayCanvas.width = videoPlayer.videoWidth;
+            overlayCanvas.height = videoPlayer.videoHeight;
+            procCanvas.width = videoPlayer.videoWidth;
+            procCanvas.height = videoPlayer.videoHeight;
+            drawOverlay();
+            document.getElementById('processBtn').disabled = false;
+        };
+    }
+});
 
-    const startX = w * s;
-    const endX = w * (1 - s);
-    const startY = h * t;
-    const endY = h * (1 - b);
+function getCalculatedZones() {
+    if(overlayCanvas.width === 0) return [];
     
-    const boxW = (endX - startX) / COLS;
-    const boxH = (endY - startY) / ROWS;
-
+    const w = overlayCanvas.width;
+    const h = overlayCanvas.height;
+    
+    // Get margin percentages
+    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+    
+    // Calculate Grid Area
+    const startX = w * sPct;
+    const endX = w * (1 - sPct);
+    const startY = h * tPct;
+    const endY = h * (1 - bPct);
+    
+    const gridW = endX - startX;
+    const gridH = endY - startY;
+    
+    // 4 Columns, 5 Rows
+    const cellW = gridW / 4;
+    const cellH = gridH / 5;
+    
     let calculatedZones = [];
-    for(let r=0; r<ROWS; r++) {
-        for(let c=0; c<COLS; c++) {
-            const x = startX + (c * boxW);
-            const y = startY + (r * boxH);
-            const cx = Math.floor(x + (boxW/2));
-            const cy = Math.floor(y + (boxH/2));
+    
+    for(let r=0; r<5; r++) {
+        for(let c=0; c<4; c++) {
+            const zx = startX + (c * cellW);
+            const zy = startY + (r * cellH);
+            const cx = Math.floor(zx + cellW/2);
+            const cy = Math.floor(zy + cellH/2);
             
             calculatedZones.push({
-                id: (r*COLS) + c,
-                x: Math.floor(x + boxW*0.1), // ROI lebih kecil utk deteksi
-                y: Math.floor(y + boxH*0.1),
-                w: Math.floor(boxW*0.8),
-                h: Math.floor(boxH*0.8),
-                cx: cx, // Koordinat Tap Presisi
-                cy: cy,
-                locked: false,
-                step: 0
+                x: zx, y: zy, w: cellW, h: cellH,
+                cx: cx, cy: cy
             });
         }
     }
@@ -225,115 +245,78 @@ function getZoneCalculations() {
 }
 
 function drawOverlay() {
-    if(!video.videoWidth) return;
-    ctx.clearRect(0,0, overlay.width, overlay.height);
+    if(overlayCanvas.width === 0) return;
+    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
     
-    const currentZones = getZoneCalculations();
+    const zones = getCalculatedZones();
     
-    currentZones.forEach(z => {
-        // Kotak Deteksi Hijau
-        ctx.strokeStyle = "rgba(0, 255, 255, 0.6)"; // Cyan
-        ctx.lineWidth = 2;
-        ctx.strokeRect(z.x, z.y, z.w, z.h);
-
-        // Titik Tengah (Tap Point)
-        ctx.fillStyle = "yellow";
-        ctx.beginPath();
-        ctx.arc(z.cx, z.cy, 5, 0, Math.PI * 2);
-        ctx.fill();
+    overlayCtx.strokeStyle = "#00bcd4"; // Cyan
+    overlayCtx.lineWidth = 3;
+    
+    zones.forEach(z => {
+        // Draw the full cell box
+        overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
+        
+        // Draw center dot (target)
+        overlayCtx.fillStyle = "yellow";
+        overlayCtx.beginPath();
+        overlayCtx.arc(z.cx, z.cy, 5, 0, Math.PI * 2);
+        overlayCtx.fill();
     });
 }
 
-// Event Listeners Slider Margin
-[sTop, sBot, sSide].forEach(el => {
-    el.addEventListener('input', () => {
-        let badgeId = "";
-        if(el.id === "marginTop") badgeId = "v-t";
-        else if(el.id === "marginBottom") badgeId = "v-b";
-        else if(el.id === "marginSide") badgeId = "v-s";
-        document.getElementById(badgeId).innerText = parseFloat(el.value).toFixed(1) + "%";
-        drawOverlay();
-    });
-});
-
-// Event Listeners Slider Waktu
-sStart.addEventListener('input', () => {
-    if(parseFloat(sStart.value) > parseFloat(sEnd.value)) sStart.value = sEnd.value;
-    document.getElementById("v-start").innerText = parseFloat(sStart.value).toFixed(1) + "s";
-    video.currentTime = sStart.value; // Preview frame
-});
-
-sEnd.addEventListener('input', () => {
-    if(parseFloat(sEnd.value) < parseFloat(sStart.value)) sEnd.value = sStart.value;
-    document.getElementById("v-end").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
-    video.currentTime = sEnd.value; // Preview frame
-});
-
-// === PROSES SCANNING ===
 document.getElementById('processBtn').onclick = async () => {
-    if(!cvReady) return;
     document.getElementById('processBtn').disabled = true;
     document.getElementById('btnDownload').style.display = 'none';
-    statusEl.innerText = "Scanning berjalan...";
-    
     currentStep = 1;
-    // Reset Grid
     document.querySelectorAll('.cell').forEach(c => {
         c.className = 'cell';
-        c.innerText = c.id.replace('c-', '')*1 + 1;
+        c.innerText = c.id.replace('c-', '') * 1 + 1; 
     });
 
-    zones = getZoneCalculations(); // Kunci posisi berdasarkan slider saat ini
+    const calcZones = getCalculatedZones();
+    zones = calcZones.map((z, i) => ({
+        id: i,
+        // The center X,Y is what we want to tap
+        outputData: `${z.cx},${z.cy}`, 
+        // OpenCV ROI (Region of Interest) - small box around center for detection
+        x: Math.round(z.cx - 40), 
+        y: Math.round(z.cy - 40), 
+        w: 80, h: 80,
+        locked: false, step: 0
+    }));
 
     let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
-    let interval = 0.1; 
-    let cooldown = 0;
-    
-    // Set Waktu Awal
-    let currentTime = parseFloat(sStart.value);
-    const endTimeVal = parseFloat(sEnd.value);
+    let currentTime = 0, interval = 0.1, cooldown = 0;
 
     async function processFrame() {
-        if(currentTime >= endTimeVal || currentTime >= video.duration) {
-            statusEl.innerText = "Selesai! Download JSON.";
+        if(currentTime >= videoPlayer.duration) {
+            statusEl.innerText = "Scanning Finished!";
             document.getElementById('processBtn').disabled = false;
             document.getElementById('btnDownload').style.display = 'block';
             gray.delete(); prevGray.delete(); diff.delete();
             return;
         }
-
-        video.currentTime = currentTime;
-        await new Promise(r => { video.onseeked = r; });
-
-        procCtx.drawImage(video, 0, 0);
+        videoPlayer.currentTime = currentTime;
+        await new Promise(r => videoPlayer.onseeked = r);
+        procCtx.drawImage(videoPlayer, 0, 0);
         let src = cv.imread(procCanvas);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-        // Visual Feedback (Zona Terkunci jadi Merah)
-        ctx.clearRect(0,0, overlay.width, overlay.height);
-        // Gambar ulang grid dasar (tipis)
-        ctx.globalAlpha = 0.3; drawOverlay(); ctx.globalAlpha = 1.0; 
-
-        zones.filter(z => z.locked).forEach(z => {
-            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4;
-            ctx.strokeRect(z.x, z.y, z.w, z.h);
-            ctx.fillStyle = "#e74c3c"; ctx.font = "bold 40px Arial";
-            ctx.fillText(z.step, z.cx - 10, z.cy + 10);
-        });
 
         if(!prevGray.empty() && cooldown <= 0) {
             cv.absdiff(gray, prevGray, diff);
             cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
-            
             let detected = [];
             zones.forEach(z => {
                 if(z.locked) return;
-                let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
-                if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
-                roi.delete();
+                // Safe ROI check
+                if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
+                    let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
+                    if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
+                    roi.delete();
+                }
             });
-
-            if(detected.length > 0 && detected.length <= 2) {
+            if(detected.length > 0) {
                 let target = detected[0];
                 target.locked = true;
                 target.step = currentStep;
@@ -343,10 +326,9 @@ document.getElementById('processBtn').onclick = async () => {
                 cell.innerText = currentStep;
                 
                 currentStep++;
-                cooldown = 4; 
+                cooldown = 5; 
             }
         }
-
         if(cooldown > 0) cooldown--;
         gray.copyTo(prevGray);
         src.delete();
@@ -356,25 +338,22 @@ document.getElementById('processBtn').onclick = async () => {
     processFrame();
 };
 
-// === JSON DOWNLOAD (STRUKTUR LENGKAP) ===
 document.getElementById('btnDownload').onclick = () => {
     const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
     
-    if(steps.length === 0) return alert("Tidak ada pola ditemukan!");
-
     const actionList = steps.map(s => ({
-        "type": "TAP_COORDINATE",
-        "data": `${s.cx},${s.cy}`, // Koordinat hasil hitungan margin
+        "data": s.outputData, 
         "extras": [
-            { "id": "extra_coordinate_description", "data": String(s.step) },
-            { "id": "extra_delay_before_next_action", "data": 120 }
+            { "data": String(s.step), "id": "extra_coordinate_description" },
+            { "data": 120, "id": "extra_delay_before_next_action" }
         ],
         "flags": 0,
+        "type": "TAP_COORDINATE",
         "uid": crypto.randomUUID()
     }));
 
     const keymapData = {
-        "app_version": 63,
+        "app_version": 63, 
         "keymap_db_version": 13,
         "fingerprint_map_list": [
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
@@ -383,22 +362,25 @@ document.getElementById('btnDownload').onclick = () => {
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
         ],
         "keymap_list": [{
-            "actionList": actionList,
-            "constraintList": [],
-            "constraintMode": 1,
-            "flags": 0,
-            "id": 27,
+            "actionList": actionList, 
+            "constraintList": [], 
+            "constraintMode": 1, 
+            "flags": 0, 
+            "id": 27, 
             "isEnabled": true,
             "trigger": {
-                "extras": [],
+                "extras": [], 
                 "flags": 1,
                 "keys": [{ 
-                    "clickType": 2, "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
-                    "flags": 0, "keyCode": 24, "uid": crypto.randomUUID() 
+                    "clickType": 2, 
+                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
+                    "flags": 0, 
+                    "keyCode": 24, 
+                    "uid": crypto.randomUUID() 
                 }],
                 "mode": 2
             },
-            "uid": crypto.randomUUID()
+            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
         }]
     };
 
@@ -406,10 +388,703 @@ document.getElementById('btnDownload').onclick = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Pattern_Result_${Date.now()}.json`;
+    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
+    a.download = `Pattern_Result_${timestamp}.json`;
+    document.body.appendChild(a);
     a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
 };
 </script>
 
+<script>
+let cvReady = false;
+let zones = []; 
+let currentStep = 1;
+
+// Initialize Grid UI (20 Cells for 4x5)
+const gridEl = document.getElementById('grid');
+for(let i=0; i<20; i++) {
+    let d = document.createElement('div');
+    d.className = 'cell';
+    d.id = `c-${i}`;
+    d.innerText = i + 1;
+    gridEl.appendChild(d);
+}
+
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d');
+const statusEl = document.getElementById('status');
+
+// Your fixed coordinates as center points (4x5 grid)
+const FIXED_CENTERS = [
+    // Row 1
+    [170, 845], [480, 845], [790, 845], [1100, 845],
+    // Row 2  
+    [170, 1145], [480, 1145], [790, 1145], [1100, 1145],
+    // Row 3
+    [170, 1445], [480, 1445], [790, 1445], [1100, 1445],
+    // Row 4
+    [170, 1745], [480, 1745], [790, 1745], [1100, 1745],
+    // Row 5
+    [170, 2045], [480, 2045], [790, 2045], [1100, 2045]
+];
+
+// --- LOCAL STORAGE & INIT ---
+window.addEventListener('load', () => {
+    loadSliderSettings();
+});
+
+function onOpenCvReady() {
+    cvReady = true;
+    statusEl.innerText = "Ready. Select video.";
+}
+
+function saveSliderSettings() {
+    const settings = {
+        top: document.getElementById('marginTop').value,
+        bottom: document.getElementById('marginBottom').value,
+        side: document.getElementById('marginSide').value
+    };
+    localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
+}
+
+function loadSliderSettings() {
+    const saved = localStorage.getItem('patternRecorderMargins');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        if(settings.top) {
+            document.getElementById('marginTop').value = settings.top;
+            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
+        }
+        if(settings.bottom) {
+            document.getElementById('marginBottom').value = settings.bottom;
+            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
+        }
+        if(settings.side) {
+            document.getElementById('marginSide').value = settings.side;
+            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
+        }
+    }
+}
+
+// Sliders listener
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+        const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+        document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+        saveSliderSettings();
+        drawOverlay();
+    });
+});
+
+document.getElementById('videoInput').addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+        videoPlayer.src = URL.createObjectURL(e.target.files[0]);
+        videoPlayer.onloadedmetadata = () => {
+            overlayCanvas.width = videoPlayer.videoWidth;
+            overlayCanvas.height = videoPlayer.videoHeight;
+            procCanvas.width = videoPlayer.videoWidth;
+            procCanvas.height = videoPlayer.videoHeight;
+            drawOverlay();
+            document.getElementById('processBtn').disabled = false;
+            statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
+        };
+    }
+});
+
+function getCalculatedZones() {
+    if(overlayCanvas.width === 0) return [];
+    
+    const w = overlayCanvas.width;
+    const h = overlayCanvas.height;
+    
+    // Get margin percentages
+    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+    
+    // Calculate Grid Area
+    const startX = w * sPct;
+    const endX = w * (1 - sPct);
+    const startY = h * tPct;
+    const endY = h * (1 - bPct);
+    
+    const gridW = endX - startX;
+    const gridH = endY - startY;
+    
+    // 4 Columns, 5 Rows
+    const cellW = gridW / 4;
+    const cellH = gridH / 5;
+    
+    let calculatedZones = [];
+    
+    for(let r=0; r<5; r++) {
+        for(let c=0; c<4; c++) {
+            const zx = startX + (c * cellW);
+            const zy = startY + (r * cellH);
+            
+            // Use FIXED_CENTERS as the center points, but adjust based on video resolution
+            // We need to scale the fixed coordinates to match the current video dimensions
+            const fixedCenter = FIXED_CENTERS[r * 4 + c];
+            
+            // Scale factors based on typical game resolution (assuming 1280x? for the fixed coordinates)
+            // We'll calculate scaling based on the grid area
+            const scaleX = gridW / (1100 - 170); // Max X - Min X from your coordinates
+            const scaleY = gridH / (2045 - 845); // Max Y - Min Y from your coordinates
+            
+            // Calculate scaled center position within the grid
+            const relX = (fixedCenter[0] - 170) / (1100 - 170); // Relative position (0 to 1)
+            const relY = (fixedCenter[1] - 845) / (2045 - 845); // Relative position (0 to 1)
+            
+            const cx = Math.floor(startX + (relX * gridW));
+            const cy = Math.floor(startY + (relY * gridH));
+            
+            calculatedZones.push({
+                x: zx, y: zy, w: cellW, h: cellH,
+                cx: cx, cy: cy,
+                fixedX: fixedCenter[0], // Store original fixed X
+                fixedY: fixedCenter[1]  // Store original fixed Y
+            });
+        }
+    }
+    return calculatedZones;
+}
+
+function drawOverlay() {
+    if(overlayCanvas.width === 0) return;
+    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
+    
+    const zones = getCalculatedZones();
+    
+    overlayCtx.strokeStyle = "#00bcd4"; // Cyan for grid
+    overlayCtx.lineWidth = 2;
+    
+    zones.forEach((z, i) => {
+        // Draw the full cell box
+        overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
+        
+        // Draw center dot (target) - RED for better visibility
+        overlayCtx.fillStyle = "#ff0000";
+        overlayCtx.beginPath();
+        overlayCtx.arc(z.cx, z.cy, 8, 0, Math.PI * 2);
+        overlayCtx.fill();
+        
+        // Draw fixed coordinate text
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.font = "12px Arial";
+        overlayCtx.fillText(`${z.fixedX},${z.fixedY}`, z.x + 5, z.y + 15);
+    });
+}
+
+document.getElementById('processBtn').onclick = async () => {
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('btnDownload').style.display = 'none';
+    currentStep = 1;
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+        c.innerText = c.id.replace('c-', '') * 1 + 1; 
+    });
+
+    const calcZones = getCalculatedZones();
+    zones = calcZones.map((z, i) => ({
+        id: i,
+        // Use the FIXED coordinates for output (not the calculated cx,cy)
+        outputData: `${z.fixedX},${z.fixedY}`,
+        // OpenCV ROI - use the calculated center for detection
+        x: Math.round(z.cx - 60), // Larger detection area
+        y: Math.round(z.cy - 60), 
+        w: 120, h: 120,
+        // Store both calculated and fixed coordinates
+        calcX: z.cx,
+        calcY: z.cy,
+        fixedX: z.fixedX,
+        fixedY: z.fixedY,
+        locked: false, step: 0
+    }));
+
+    let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
+    let currentTime = 0, interval = 0.1, cooldown = 0;
+
+    async function processFrame() {
+        if(currentTime >= videoPlayer.duration) {
+            statusEl.innerText = "Scanning Finished!";
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('btnDownload').style.display = 'block';
+            gray.delete(); prevGray.delete(); diff.delete();
+            return;
+        }
+        videoPlayer.currentTime = currentTime;
+        await new Promise(r => videoPlayer.onseeked = r);
+        procCtx.drawImage(videoPlayer, 0, 0);
+        let src = cv.imread(procCanvas);
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        if(!prevGray.empty() && cooldown <= 0) {
+            cv.absdiff(gray, prevGray, diff);
+            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
+            let detected = [];
+            zones.forEach(z => {
+                if(z.locked) return;
+                // Safe ROI check
+                if (z.x >= 0 && z.y >= 0 && (z.x + z.w) <= diff.cols && (z.y + z.h) <= diff.rows) {
+                    let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
+                    if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
+                    roi.delete();
+                }
+            });
+            if(detected.length > 0) {
+                let target = detected[0];
+                target.locked = true;
+                target.step = currentStep;
+                
+                let cell = document.getElementById(`c-${target.id}`);
+                cell.classList.add('detected');
+                cell.innerText = currentStep;
+                
+                // Update status with both calculated and fixed coordinates
+                statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
+                
+                currentStep++;
+                cooldown = 5; 
+            }
+        }
+        if(cooldown > 0) cooldown--;
+        gray.copyTo(prevGray);
+        src.delete();
+        currentTime += interval;
+        requestAnimationFrame(processFrame);
+    }
+    processFrame();
+};
+
+document.getElementById('btnDownload').onclick = () => {
+    const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
+    
+    const actionList = steps.map(s => ({
+        "data": `${s.fixedX},${s.fixedY}`, // Use FIXED coordinates for output
+        "extras": [
+            { "data": String(s.step), "id": "extra_coordinate_description" },
+            { "data": 120, "id": "extra_delay_before_next_action" }
+        ],
+        "flags": 0,
+        "type": "TAP_COORDINATE",
+        "uid": crypto.randomUUID()
+    }));
+
+    const keymapData = {
+        "app_version": 63, 
+        "keymap_db_version": 13,
+        "fingerprint_map_list": [
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+        ],
+        "keymap_list": [{
+            "actionList": actionList, 
+            "constraintList": [], 
+            "constraintMode": 1, 
+            "flags": 0, 
+            "id": 27, 
+            "isEnabled": true,
+            "trigger": {
+                "extras": [], 
+                "flags": 1,
+                "keys": [{ 
+                    "clickType": 2, 
+                    "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
+                    "flags": 0, 
+                    "keyCode": 24, 
+                    "uid": crypto.randomUUID() 
+                }],
+                "mode": 2
+            },
+            "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
+        }]
+    };
+
+    const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
+    a.download = `Pattern_Result_${timestamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+};
+</script>
+-->
+<script>
+let cvReady = false;
+let zones = [];
+let currentStep = 1;
+
+// Initialize Grid UI (20 Cells for 4x5)
+const gridEl = document.getElementById('grid');
+gridEl.innerHTML = '';
+for (let i = 0; i < 20; i++) {
+  let d = document.createElement('div');
+  d.className = 'cell';
+  d.id = `c-${i}`;
+  d.innerText = i + 1;
+  gridEl.appendChild(d);
+}
+
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d');
+const statusEl = document.getElementById('status');
+
+// Your fixed coordinates as center points (kept as metadata)
+const FIXED_CENTERS = [
+  [170, 845], [480, 845], [790, 845], [1100, 845],
+  [170, 1145], [480, 1145], [790, 1145], [1100, 1145],
+  [170, 1445], [480, 1445], [790, 1445], [1100, 1445],
+  [170, 1745], [480, 1745], [790, 1745], [1100, 1745],
+  [170, 2045], [480, 2045], [790, 2045], [1100, 2045]
+];
+
+// --- LOCAL STORAGE & INIT ---
+window.addEventListener('load', () => {
+  loadSliderSettings();
+});
+
+function onOpenCvReady() {
+  cvReady = true;
+  statusEl.innerText = "Ready. Select video.";
+}
+
+function saveSliderSettings() {
+  const settings = {
+    top: document.getElementById('marginTop').value,
+    bottom: document.getElementById('marginBottom').value,
+    side: document.getElementById('marginSide').value
+  };
+  localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
+}
+
+function loadSliderSettings() {
+  const saved = localStorage.getItem('patternRecorderMargins');
+  if (saved) {
+    const settings = JSON.parse(saved);
+    if (settings.top) {
+      document.getElementById('marginTop').value = settings.top;
+      document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
+    }
+    if (settings.bottom) {
+      document.getElementById('marginBottom').value = settings.bottom;
+      document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
+    }
+    if (settings.side) {
+      document.getElementById('marginSide').value = settings.side;
+      document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
+    }
+  }
+}
+
+// Sliders listener
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+    saveSliderSettings();
+    drawOverlay();
+  });
+});
+
+document.getElementById('videoInput').addEventListener('change', (e) => {
+  if (e.target.files[0]) {
+    videoPlayer.src = URL.createObjectURL(e.target.files[0]);
+    videoPlayer.onloadedmetadata = () => {
+      // Set canvas pixel sizes to video natural size
+      overlayCanvas.width = videoPlayer.videoWidth;
+      overlayCanvas.height = videoPlayer.videoHeight;
+      procCanvas.width = videoPlayer.videoWidth;
+      procCanvas.height = videoPlayer.videoHeight;
+
+      // Also set CSS size to match displayed video if needed
+      overlayCanvas.style.width = videoPlayer.clientWidth + 'px';
+      overlayCanvas.style.height = (videoPlayer.clientWidth * (videoPlayer.videoHeight / videoPlayer.videoWidth)) + 'px';
+
+      drawOverlay();
+      document.getElementById('processBtn').disabled = false;
+      statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
+    };
+  }
+});
+
+function getCalculatedZones() {
+  if (overlayCanvas.width === 0) return [];
+
+  const w = overlayCanvas.width;
+  const h = overlayCanvas.height;
+
+  const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+  const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+  const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+
+  const startX = w * sPct;
+  const endX = w * (1 - sPct);
+  const startY = h * tPct;
+  const endY = h * (1 - bPct);
+
+  const gridW = endX - startX;
+  const gridH = endY - startY;
+
+  const cols = 4, rows = 5;
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
+
+  let calculatedZones = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const zx = startX + (c * cellW);
+      const zy = startY + (r * cellH);
+
+      // Use geometric center of each cell
+      const cx = Math.round(zx + cellW / 2);
+      const cy = Math.round(zy + cellH / 2);
+
+      calculatedZones.push({
+        x: Math.round(zx), y: Math.round(zy), w: Math.round(cellW), h: Math.round(cellH),
+        cx: cx, cy: cy,
+        fixedX: FIXED_CENTERS[r * cols + c][0],
+        fixedY: FIXED_CENTERS[r * cols + c][1]
+      });
+    }
+  }
+  return calculatedZones;
+}
+
+function drawOverlay() {
+  if (overlayCanvas.width === 0) return;
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+  const zones = getCalculatedZones();
+
+  overlayCtx.strokeStyle = "#00bcd4";
+  overlayCtx.lineWidth = 2;
+
+  zones.forEach((z, i) => {
+    overlayCtx.strokeRect(z.x, z.y, z.w, z.h);
+
+    overlayCtx.fillStyle = "#ff0000";
+    overlayCtx.beginPath();
+    overlayCtx.arc(z.cx, z.cy, 8, 0, Math.PI * 2);
+    overlayCtx.fill();
+
+    overlayCtx.fillStyle = "#ffffff";
+    overlayCtx.font = "12px Arial";
+    overlayCtx.fillText(`${z.fixedX},${z.fixedY}`, z.x + 5, z.y + 15);
+  });
+}
+
+document.getElementById('processBtn').onclick = async () => {
+  document.getElementById('processBtn').disabled = true;
+  document.getElementById('btnDownload').style.display = 'none';
+  currentStep = 1;
+  document.querySelectorAll('.cell').forEach(c => {
+    c.className = 'cell';
+    const idx = parseInt(c.id.split('-')[1], 10);
+    c.innerText = idx + 1;
+  });
+
+  const calcZones = getCalculatedZones();
+  zones = calcZones.map((z, i) => ({
+    id: i,
+    outputData: `${z.fixedX},${z.fixedY}`,
+    // ROI will be computed dynamically around cx,cy in processFrame
+    x: Math.round(z.x), y: Math.round(z.y), w: Math.round(z.w), h: Math.round(z.h),
+    calcX: z.cx, calcY: z.cy,
+    fixedX: z.fixedX, fixedY: z.fixedY,
+    locked: false, step: 0
+  }));
+
+  // OpenCV mats
+  let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
+
+  // Timing and detection parameters
+  let currentTime = 0;
+  const interval = 0.1; // seconds between samples
+  const skipFactor = 5; // skip this many intervals after a detection
+  const roiW = 120, roiH = 120;
+  const motionThreshold = 30; // threshold for diff
+  const motionRatio = 0.08; // required non-zero ratio in ROI
+
+  // Helper to await seeked once
+  function seekTo(time) {
+    return new Promise(resolve => {
+      const handler = () => {
+        videoPlayer.onseeked = null;
+        resolve();
+      };
+      videoPlayer.onseeked = handler;
+      videoPlayer.currentTime = time;
+    });
+  }
+
+  async function processFrame() {
+    if (!videoPlayer.duration || isNaN(videoPlayer.duration)) {
+      statusEl.innerText = "Video not ready.";
+      document.getElementById('processBtn').disabled = false;
+      gray.delete(); prevGray.delete(); diff.delete();
+      return;
+    }
+
+    if (currentTime >= videoPlayer.duration) {
+      statusEl.innerText = "Scanning Finished!";
+      document.getElementById('processBtn').disabled = false;
+      document.getElementById('btnDownload').style.display = 'block';
+      gray.delete(); prevGray.delete(); diff.delete();
+      return;
+    }
+
+    // Seek and draw
+    await seekTo(currentTime);
+    procCtx.drawImage(videoPlayer, 0, 0, procCanvas.width, procCanvas.height);
+
+    let src = cv.imread(procCanvas);
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+    // If prevGray empty, initialize and advance
+    if (prevGray.empty()) {
+      gray.copyTo(prevGray);
+      src.delete();
+      currentTime += interval;
+      requestAnimationFrame(processFrame);
+      return;
+    }
+
+    // Compute diff and threshold
+    cv.absdiff(gray, prevGray, diff);
+    cv.threshold(diff, diff, motionThreshold, 255, cv.THRESH_BINARY);
+
+    let detected = [];
+    zones.forEach(z => {
+      if (z.locked) return;
+
+      // Centered ROI around calcX,calcY
+      let rx = Math.round(z.calcX - roiW / 2);
+      let ry = Math.round(z.calcY - roiH / 2);
+
+      // Clamp to bounds
+      rx = Math.max(0, Math.min(rx, diff.cols - roiW));
+      ry = Math.max(0, Math.min(ry, diff.rows - roiH));
+
+      if (rx >= 0 && ry >= 0 && (rx + roiW) <= diff.cols && (ry + roiH) <= diff.rows) {
+        let roi = diff.roi(new cv.Rect(rx, ry, roiW, roiH));
+        const nonZero = cv.countNonZero(roi);
+        roi.delete();
+        if (nonZero > (roiW * roiH * motionRatio)) {
+          detected.push({ zone: z, nonZero, rx, ry });
+        }
+      }
+    });
+
+    if (detected.length > 0) {
+      // Choose strongest motion
+      detected.sort((a, b) => b.nonZero - a.nonZero);
+      let target = detected[0].zone;
+      target.locked = true;
+      target.step = currentStep;
+
+      let cell = document.getElementById(`c-${target.id}`);
+      cell.classList.add('detected');
+      cell.innerText = currentStep;
+
+      statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
+
+      currentStep++;
+      currentTime += interval * skipFactor; // skip ahead after detection
+    } else {
+      currentTime += interval;
+    }
+
+    // Prepare for next iteration
+    gray.copyTo(prevGray);
+    src.delete();
+    requestAnimationFrame(processFrame);
+  }
+
+  // Start scanning from 0
+  currentTime = 0;
+  processFrame();
+};
+
+// Download logic unchanged
+document.getElementById('btnDownload').onclick = () => {
+  const steps = zones.filter(z => z.locked).sort((a, b) => a.step - b.step);
+
+  const actionList = steps.map(s => ({
+    "data": `${s.fixedX},${s.fixedY}`,
+    "extras": [
+      { "data": String(s.step), "id": "extra_coordinate_description" },
+      { "data": 120, "id": "extra_delay_before_next_action" }
+    ],
+    "flags": 0,
+    "type": "TAP_COORDINATE",
+    "uid": crypto.randomUUID()
+  }));
+
+  const keymapData = {
+    "app_version": 63,
+    "keymap_db_version": 13,
+    "fingerprint_map_list": [
+      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
+      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
+      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
+      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+    ],
+    "keymap_list": [{
+      "actionList": actionList,
+      "constraintList": [],
+      "constraintMode": 1,
+      "flags": 0,
+      "id": 27,
+      "isEnabled": true,
+      "trigger": {
+        "extras": [],
+        "flags": 1,
+        "keys": [{
+          "clickType": 2,
+          "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+          "flags": 0,
+          "keyCode": 24,
+          "uid": crypto.randomUUID()
+        }],
+        "mode": 2
+      },
+      "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
+    }]
+  };
+
+  const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
+  a.download = `Pattern_Result_${timestamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+};
+</script>
+    
 </body>
 </html>
