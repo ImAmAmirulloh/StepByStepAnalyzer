@@ -2,253 +2,395 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Memory Pattern Recorder V3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Recorder - Precision Shift V4</title>
 
 <style>
-:root { --primary:#00bcd4; --bg:#f5f6fa; --text:#2f3640; }
-body{
-  font-family:Segoe UI,sans-serif;
-  background:var(--bg);
-  margin:0;
-  padding:10px;
-  display:flex;
-  justify-content:center;
-}
-.main-container{
-  background:#fff;
-  padding:20px;
-  border-radius:12px;
-  max-width:600px;
-  width:100%;
-  box-shadow:0 4px 20px rgba(0,0,0,.1);
-}
-.preview-wrapper{
-  position:relative;
-  background:#000;
-  border-radius:8px;
-  overflow:hidden;
-}
-#videoPlayer{ width:100%; display:block; }
-#overlayCanvas{
-  position:absolute;
-  top:0; left:0;
-  pointer-events:none;
-}
-.slider-row{ margin:12px 0; }
-.slider-header{
-  display:flex;
-  justify-content:space-between;
-  font-size:.8rem;
-  font-weight:bold;
-}
-.val-badge{
-  background:#eee;
-  padding:2px 6px;
-  border-radius:4px;
-  font-family:monospace;
-}
-input[type=range],input[type=number]{
-  width:100%;
-  accent-color:var(--primary);
-}
-.btn{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:6px;
-  background:var(--primary);
-  color:#fff;
-  font-weight:bold;
-  cursor: pointer;
-}
-.btn:disabled{ background:#bbb; cursor: not-allowed; }
-#btnDownload{ display:none; background:#2ecc71; }
-#status{ text-align:center; margin-top:10px; font-size:.9rem; }
+    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; }
+    body { 
+        font-family: 'Segoe UI', sans-serif; 
+        background: var(--bg); 
+        color: var(--text); 
+        margin: 0; padding: 10px; 
+        display: flex; flex-direction: column; align-items: center; 
+    }
+    
+    .main-container { 
+        background: white; padding: 20px; border-radius: 12px; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+        max-width: 600px; width: 100%; box-sizing: border-box; 
+    }
+
+    .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .nav-header h2 { margin: 0; color: #2c3e50; }
+    .nav-header p { margin: 5px 0 0 0; font-size: 0.8rem; color: #7f8c8d; }
+
+    .preview-wrapper { 
+        position: relative; width: 100%; background: #000; 
+        border-radius: 8px; overflow: hidden; margin-bottom: 15px; 
+        border: 2px solid #333; line-height: 0;
+    }
+    #videoPlayer { width: 100%; display: block; }
+    #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    /* SLIDERS */
+    .control-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; }
+    .slider-row { margin-bottom: 10px; }
+    .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
+    .val-badge { background: #e1e1e1; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+    input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+
+    /* GRID VISUALIZATION */
+    .results-grid { 
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; 
+        margin-top: 15px; width: 100%; 
+    }
+    .cell { 
+        aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; 
+        display: flex; align-items: center; justify-content: center; 
+        font-weight: bold; font-size: 1.2rem; color: #bdc3c7; 
+        transition: all 0.2s;
+    }
+    .cell.detected { 
+        background: white; border: 2px solid var(--danger); 
+        color: var(--danger); box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
+    }
+
+    /* BUTTONS */
+    .btn { 
+        width: 100%; padding: 12px; border: none; border-radius: 6px; 
+        font-weight: bold; cursor: pointer; font-size: 1rem; color: white; 
+        margin-top: 5px; 
+    }
+    .btn-start { background: var(--primary); }
+    .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
+    .btn-download { background: #2ecc71; margin-top: 15px; display: none; }
+
+    #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
 </style>
-
 <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
-
-<script>
-let cvReady=false;
-function onOpenCvReady(){
-  cvReady=true;
-  document.getElementById("status").innerText="OpenCV ready. Load video.";
-}
-</script>
 </head>
-
 <body>
+
 <div class="main-container">
+    <div class="nav-header">
+        <h2>Memory Pattern Recorder</h2>
+        <p>Base: 1260x2800 Precision Template</p>
+    </div>
 
-<input type="file" id="videoInput" accept="video/*">
+    <input type="file" id="videoInput" accept="video/*" style="margin-bottom: 10px; width:100%;">
+    
+    <div class="preview-wrapper">
+        <video id="videoPlayer" muted playsinline></video>
+        <canvas id="overlayCanvas"></canvas>
+    </div>
 
-<div class="preview-wrapper">
-  <video id="videoPlayer" muted playsinline></video>
-  <canvas id="overlayCanvas"></canvas>
-</div>
+    <div class="control-panel">
+        <div class="slider-row">
+            <div class="slider-header"><span>GESER X (Kiri/Kanan)</span><span id="v-x" class="val-badge">0 px</span></div>
+            <input type="range" id="shiftX" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+            <div class="slider-header"><span>GESER Y (Atas/Bawah)</span><span id="v-y" class="val-badge">0 px</span></div>
+            <input type="range" id="shiftY" min="-200" max="200" value="0">
+        </div>
+        <button id="processBtn" class="btn btn-start" disabled>▶ MULAI SCAN</button>
+    </div>
 
-<div class="slider-row">
-  <div class="slider-header"><span>TOP</span><span id="v-t" class="val-badge">23%</span></div>
-  <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23">
-</div>
-<div class="slider-row">
-  <div class="slider-header"><span>BOTTOM</span><span id="v-b" class="val-badge">15%</span></div>
-  <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15">
-</div>
-<div class="slider-row">
-  <div class="slider-header"><span>SIDE</span><span id="v-s" class="val-badge">5%</span></div>
-  <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5">
-</div>
-
-<div class="slider-row">
-  <div class="slider-header"><span>START TIME</span><span id="v-start" class="val-badge">0.0s</span></div>
-  <input type="range" id="startTime" step="0.1" value="0">
-</div>
-<div class="slider-row">
-  <div class="slider-header"><span>END TIME</span><span id="v-end" class="val-badge">0.0s</span></div>
-  <input type="range" id="endTime" step="0.1" value="0">
-</div>
-
-<button id="processBtn" class="btn" disabled>▶ START SCANNING</button>
-<button id="btnDownload" class="btn">💾 DOWNLOAD JSON</button>
-
-<div id="status">Waiting for OpenCV…</div>
+    <div id="status">Menunggu OpenCV...</div>
+    
+    <div id="grid" class="results-grid"></div>
+    
+    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON KEYMAPPER</button>
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
 
 <script>
-// Define elements explicitly to prevent ReferenceErrors
-const video = document.getElementById('videoPlayer');
-const overlay = document.getElementById('overlayCanvas');
-const ctx = overlay.getContext("2d");
-const inputVideo = document.getElementById('videoInput');
-const btnProcess = document.getElementById('processBtn');
-const btnDownload = document.getElementById('btnDownload');
-const statusText = document.getElementById('status');
+let cvReady = false;
+let zones = []; 
+let currentStep = 1;
 
-// Sliders
-const sTop = document.getElementById('marginTop');
-const sBot = document.getElementById('marginBottom');
-const sSide = document.getElementById('marginSide');
-const sStart = document.getElementById('startTime');
-const sEnd = document.getElementById('endTime');
+// 1. DATA KOORDINAT MENTAH (Sesuai request awal JSON Anda)
+// Format urutan: Baris 1 (kiri ke kanan), Baris 2, dst.
+const RAW_COORDS = [
+    {x: 170, y: 845},  {x: 480, y: 845},  {x: 790, y: 845},  {x: 1100, y: 845},
+    {x: 170, y: 1145}, {x: 480, y: 1145}, {x: 790, y: 1145}, {x: 1100, y: 1145},
+    {x: 170, y: 1445}, {x: 480, y: 1445}, {x: 790, y: 1445}, {x: 1100, y: 1445},
+    {x: 170, y: 1745}, {x: 480, y: 1745}, {x: 790, y: 1745}, {x: 1100, y: 1745},
+    {x: 170, y: 2045}, {x: 480, y: 2045}, {x: 790, y: 2045}, {x: 1100, y: 2045}
+];
 
-function drawOverlay(){
-  if(!overlay.width) return;
-  ctx.clearRect(0,0,overlay.width,overlay.height);
-
-  const w = overlay.width;
-  const h = overlay.height;
-  
-  // Use .value from the specific elements
-  const t = sTop.value/100;
-  const b = sBot.value/100;
-  const s = sSide.value/100;
-
-  const sx=w*s, ex=w*(1-s);
-  const sy=h*t, ey=h*(1-b);
-  const gw=ex-sx, gh=ey-sy;
-
-  const cols=4, rows=5;
-  const cw=gw/cols, ch=gh/rows;
-
-  ctx.strokeStyle="#00bcd4"; ctx.lineWidth=2;
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      ctx.strokeRect(sx+c*cw,sy+r*ch,cw,ch);
-    }
-  }
+// Inisialisasi Tampilan Grid (1-20)
+const gridEl = document.getElementById('grid');
+for(let i=0; i<20; i++) {
+    let d = document.createElement('div');
+    d.className = 'cell';
+    d.id = `c-${i}`;
+    d.innerText = i + 1;
+    gridEl.appendChild(d);
 }
 
-// Margin Slider Listeners
-[sTop, sBot, sSide].forEach(el => {
-  el.oninput = () => {
-    // Determine which badge to update
-    let badgeId = "";
-    if(el.id === "marginTop") badgeId = "v-t";
-    else if(el.id === "marginBottom") badgeId = "v-b";
-    else if(el.id === "marginSide") badgeId = "v-s";
+// Element Definitions
+const videoPlayer = document.getElementById('videoPlayer');
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+const procCanvas = document.getElementById('procCanvas');
+const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
+const statusEl = document.getElementById('status');
+const shiftXEl = document.getElementById('shiftX');
+const shiftYEl = document.getElementById('shiftY');
+const vxEl = document.getElementById('v-x');
+const vyEl = document.getElementById('v-y');
+
+function onOpenCvReady() {
+    cvReady = true;
+    statusEl.innerText = "Siap. Pilih video rekaman layar.";
+}
+
+// Logic: Ambil koordinat dasar, tambahkan nilai slider
+function getAdjustedCoords() {
+    const ox = parseInt(shiftXEl.value);
+    const oy = parseInt(shiftYEl.value);
     
-    // Update badge text
-    document.getElementById(badgeId).innerText = parseFloat(el.value).toFixed(1) + "%";
+    return RAW_COORDS.map((c, index) => {
+        return {
+            id: index,
+            // Koordinat Asli + Geseran Slider
+            finalX: c.x + ox,
+            finalY: c.y + oy,
+            // Koordinat string asli untuk disimpan di JSON (opsional, atau mau yg final?)
+            // Kita simpan yg final agar akurat sesuai geseran user
+            jsonString: `${c.x + ox},${c.y + oy}` 
+        };
+    });
+}
+
+// Gambar Overlay Kotak Hijau & Titik Kuning
+function drawOverlay() {
+    if(!videoPlayer.videoWidth) return;
+    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
+    
+    const coords = getAdjustedCoords();
+    
+    coords.forEach(c => {
+        // Kotak Deteksi (Ukuran 100x100, ditengah titik)
+        const size = 100;
+        const rectX = c.finalX - (size/2);
+        const rectY = c.finalY - (size/2);
+
+        overlayCtx.strokeStyle = "rgba(0, 255, 0, 0.7)"; // Hijau
+        overlayCtx.lineWidth = 2;
+        overlayCtx.strokeRect(rectX, rectY, size, size);
+
+        // Titik Tengah (Tap Point)
+        overlayCtx.fillStyle = "yellow";
+        overlayCtx.beginPath();
+        overlayCtx.arc(c.finalX, c.finalY, 5, 0, Math.PI * 2);
+        overlayCtx.fill();
+    });
+}
+
+// Event Listeners Slider
+shiftXEl.addEventListener('input', (e) => {
+    vxEl.innerText = e.target.value + " px";
     drawOverlay();
-  };
+});
+shiftYEl.addEventListener('input', (e) => {
+    vyEl.innerText = e.target.value + " px";
+    drawOverlay();
 });
 
-// Video Input Listener
-inputVideo.onchange = e => {
-  if(!cvReady) return alert("Please wait for OpenCV to load.");
-  if(!e.target.files[0]) return;
-
-  video.src = URL.createObjectURL(e.target.files[0]);
-  video.onloadedmetadata = () => {
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    drawOverlay();
-
-    // Setup Time Sliders
-    sStart.min = 0;
-    sEnd.min = 0;
-    sStart.max = video.duration;
-    sEnd.max = video.duration;
-    sEnd.value = video.duration;
-    
-    // Fix: Use getElementById for IDs with hyphens
-    document.getElementById("v-end").innerText = video.duration.toFixed(1) + "s";
-
-    btnProcess.disabled = false;
-    statusText.innerText = "Video ready.";
-  };
-};
-
-// Time Slider Listeners
-sStart.oninput = () => {
-  if(parseFloat(sStart.value) > parseFloat(sEnd.value)){
-    sStart.value = sEnd.value;
-  }
-  document.getElementById("v-start").innerText = parseFloat(sStart.value).toFixed(1) + "s";
-  // Optional: Seek video to preview time
-  video.currentTime = sStart.value;
-};
-
-sEnd.oninput = () => {
-  if(parseFloat(sEnd.value) < parseFloat(sStart.value)){
-    sEnd.value = sStart.value;
-  }
-  document.getElementById("v-end").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
-  // Optional: Seek video to preview time
-  video.currentTime = sEnd.value;
-};
-
-// Process Button
-btnProcess.onclick = () => {
-  statusText.innerText = `Scanning range: ${sStart.value}s → ${sEnd.value}s`;
-  // Logic OpenCV detection akan masuk di sini nanti
-  // Untuk sekarang, kita tampilkan tombol download
-  btnDownload.style.display = "block";
-};
-
-// Download Button
-btnDownload.onclick = () => {
-  const data = {
-    start: sStart.value,
-    end: sEnd.value,
-    margins: {
-        top: sTop.value,
-        bottom: sBot.value,
-        side: sSide.value
+// Load Video
+document.getElementById('videoInput').addEventListener('change', (e) => {
+    if(e.target.files[0]) {
+        const url = URL.createObjectURL(e.target.files[0]);
+        videoPlayer.src = url;
+        videoPlayer.onloadedmetadata = () => {
+            // Set canvas size sesuai resolusi video asli
+            overlayCanvas.width = videoPlayer.videoWidth;
+            overlayCanvas.height = videoPlayer.videoHeight;
+            procCanvas.width = videoPlayer.videoWidth;
+            procCanvas.height = videoPlayer.videoHeight;
+            
+            drawOverlay();
+            document.getElementById('processBtn').disabled = false;
+            statusEl.innerText = "Video dimuat. Sesuaikan kotak hijau dengan kartu.";
+        };
     }
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "pattern.json";
-  document.body.appendChild(a); // Required for Firefox
-  a.click();
-  document.body.removeChild(a);
+});
+
+// === PROSES SCANNING ===
+document.getElementById('processBtn').onclick = async () => {
+    if(!cvReady) return;
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('btnDownload').style.display = 'none';
+    statusEl.innerText = "Sedang memproses pola...";
+    
+    // Reset Grid
+    currentStep = 1;
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+        c.innerText = c.id.replace('c-', '') * 1 + 1; // Reset angka 1-20
+    });
+
+    // Siapkan Zones berdasarkan Slider terakhir
+    const adjusted = getAdjustedCoords();
+    zones = adjusted.map(c => ({
+        id: c.id,
+        jsonString: c.jsonString,
+        // Region of Interest (ROI) untuk OpenCV
+        x: c.finalX - 50,
+        y: c.finalY - 50,
+        w: 100, 
+        h: 100,
+        locked: false,
+        stepOrder: 0
+    }));
+
+    let cap = new cv.VideoCapture(videoPlayer);
+    let gray = new cv.Mat();
+    let prevGray = new cv.Mat();
+    let diff = new cv.Mat();
+    
+    let currentTime = 0;
+    const interval = 0.1; // Cek setiap 0.1 detik video
+    let cooldown = 0;
+
+    async function processFrame() {
+        if(currentTime >= videoPlayer.duration) {
+            statusEl.innerText = "Selesai! Silakan download JSON.";
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('btnDownload').style.display = 'block';
+            
+            // Clean up memory
+            gray.delete(); prevGray.delete(); diff.delete(); 
+            return;
+        }
+
+        videoPlayer.currentTime = currentTime;
+        await new Promise(r => { videoPlayer.onseeked = r; });
+
+        procCtx.drawImage(videoPlayer, 0, 0);
+        let src = cv.imread(procCanvas);
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        if(!prevGray.empty() && cooldown <= 0) {
+            cv.absdiff(gray, prevGray, diff);
+            cv.threshold(diff, diff, 50, 255, cv.THRESH_BINARY);
+            
+            let detected = [];
+            
+            // Cek setiap zona
+            zones.forEach(z => {
+                if(z.locked) return; // Skip yang sudah ketemu
+                
+                // Ambil potongan gambar di area kotak
+                let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
+                let changes = cv.countNonZero(roi);
+                roi.delete();
+
+                // Jika perubahan pixel cukup besar (kartu membalik)
+                if(changes > (z.w * z.h * 0.2)) {
+                    detected.push(z);
+                }
+            });
+
+            // Jika ada deteksi (biasanya sepasang 2 kartu)
+            if(detected.length > 0) {
+                // Ambil kartu pertama yg terdeteksi (atau keduanya)
+                let target = detected[0];
+                target.locked = true;
+                target.stepOrder = currentStep;
+                
+                // Update Visual Grid
+                let cell = document.getElementById(`c-${target.id}`);
+                cell.classList.add('detected');
+                cell.innerText = currentStep;
+                
+                currentStep++;
+                cooldown = 3; // Jeda sebentar agar tidak double detect
+            }
+        }
+
+        if(cooldown > 0) cooldown--;
+        gray.copyTo(prevGray);
+        src.delete();
+        currentTime += interval;
+        requestAnimationFrame(processFrame);
+    }
+    
+    processFrame();
+};
+
+// === GENERATE JSON (STRUKTUR LENGKAP KEYMAPPER) ===
+document.getElementById('btnDownload').onclick = () => {
+    // Urutkan zona berdasarkan urutan terdeteksi (stepOrder)
+    const activeSteps = zones
+        .filter(z => z.locked)
+        .sort((a,b) => a.stepOrder - b.stepOrder);
+
+    // Buat Action List sesuai template Anda
+    const actionList = activeSteps.map(s => ({
+        "data": s.jsonString, // Koordinat akurat (misal: "175,850")
+        "extras": [
+            { 
+                "data": String(s.stepOrder), 
+                "id": "extra_coordinate_description" 
+            },
+            { 
+                "data": 120, 
+                "id": "extra_delay_before_next_action" 
+            }
+        ],
+        "flags": 0,
+        "type": "TAP_COORDINATE",
+        "uid": crypto.randomUUID()
+    }));
+
+    // Struktur Utuh JSON
+    const finalJson = {
+        "app_version": 63,
+        "keymap_db_version": 13,
+        "fingerprint_map_list": [
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
+            { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+        ],
+        "keymap_list": [
+            {
+                "actionList": actionList,
+                "constraintList": [],
+                "constraintMode": 1,
+                "flags": 0,
+                "id": 27,
+                "isEnabled": true,
+                "trigger": {
+                    "extras": [],
+                    "flags": 1,
+                    "keys": [
+                        {
+                            "clickType": 2,
+                            "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+                            "flags": 0,
+                            "keyCode": 24, // Volume UP
+                            "uid": crypto.randomUUID()
+                        }
+                    ],
+                    "mode": 2
+                },
+                "uid": crypto.randomUUID()
+            }
+        ]
+    };
+
+    const blob = new Blob([JSON.stringify(finalJson, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `KeyMap_Pattern_${new Date().getTime()}.json`;
+    a.click();
 };
 </script>
 
