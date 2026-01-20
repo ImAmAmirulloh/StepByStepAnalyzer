@@ -61,8 +61,9 @@ input[type=range],input[type=number]{
   background:var(--primary);
   color:#fff;
   font-weight:bold;
+  cursor: pointer;
 }
-.btn:disabled{ background:#bbb; }
+.btn:disabled{ background:#bbb; cursor: not-allowed; }
 #btnDownload{ display:none; background:#2ecc71; }
 #status{ text-align:center; margin-top:10px; font-size:.9rem; }
 </style>
@@ -71,7 +72,6 @@ input[type=range],input[type=number]{
 
 <script>
 let cvReady=false;
-/* ⭐ new line change */
 function onOpenCvReady(){
   cvReady=true;
   document.getElementById("status").innerText="OpenCV ready. Load video.";
@@ -89,7 +89,6 @@ function onOpenCvReady(){
   <canvas id="overlayCanvas"></canvas>
 </div>
 
-<!-- MARGIN SLIDERS -->
 <div class="slider-row">
   <div class="slider-header"><span>TOP</span><span id="v-t" class="val-badge">23%</span></div>
   <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23">
@@ -103,7 +102,6 @@ function onOpenCvReady(){
   <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5">
 </div>
 
-<!-- TIME RANGE SLIDERS -->
 <div class="slider-row">
   <div class="slider-header"><span>START TIME</span><span id="v-start" class="val-badge">0.0s</span></div>
   <input type="range" id="startTime" step="0.1" value="0">
@@ -122,25 +120,40 @@ function onOpenCvReady(){
 <canvas id="procCanvas" style="display:none;"></canvas>
 
 <script>
-const video=videoPlayer;
-const overlay=overlayCanvas;
-const ctx=overlay.getContext("2d");
+// Define elements explicitly to prevent ReferenceErrors
+const video = document.getElementById('videoPlayer');
+const overlay = document.getElementById('overlayCanvas');
+const ctx = overlay.getContext("2d");
+const inputVideo = document.getElementById('videoInput');
+const btnProcess = document.getElementById('processBtn');
+const btnDownload = document.getElementById('btnDownload');
+const statusText = document.getElementById('status');
+
+// Sliders
+const sTop = document.getElementById('marginTop');
+const sBot = document.getElementById('marginBottom');
+const sSide = document.getElementById('marginSide');
+const sStart = document.getElementById('startTime');
+const sEnd = document.getElementById('endTime');
 
 function drawOverlay(){
   if(!overlay.width) return;
   ctx.clearRect(0,0,overlay.width,overlay.height);
 
-  const w=overlay.width,h=overlay.height;
-  const t=marginTop.value/100;
-  const b=marginBottom.value/100;
-  const s=marginSide.value/100;
+  const w = overlay.width;
+  const h = overlay.height;
+  
+  // Use .value from the specific elements
+  const t = sTop.value/100;
+  const b = sBot.value/100;
+  const s = sSide.value/100;
 
   const sx=w*s, ex=w*(1-s);
   const sy=h*t, ey=h*(1-b);
   const gw=ex-sx, gh=ey-sy;
 
-  const cols=4,rows=5;
-  const cw=gw/cols,ch=gh/rows;
+  const cols=4, rows=5;
+  const cw=gw/cols, ch=gh/rows;
 
   ctx.strokeStyle="#00bcd4"; ctx.lineWidth=2;
   for(let r=0;r<rows;r++){
@@ -150,64 +163,92 @@ function drawOverlay(){
   }
 }
 
-/* ⭐ new line change — slider listeners */
-["marginTop","marginBottom","marginSide"].forEach(id=>{
-  const el=document.getElementById(id);
-  el.oninput=()=>{
-    document.getElementById(
-      id==="marginTop"?"v-t":id==="marginBottom"?"v-b":"v-s"
-    ).innerText=parseFloat(el.value).toFixed(1)+"%";
+// Margin Slider Listeners
+[sTop, sBot, sSide].forEach(el => {
+  el.oninput = () => {
+    // Determine which badge to update
+    let badgeId = "";
+    if(el.id === "marginTop") badgeId = "v-t";
+    else if(el.id === "marginBottom") badgeId = "v-b";
+    else if(el.id === "marginSide") badgeId = "v-s";
+    
+    // Update badge text
+    document.getElementById(badgeId).innerText = parseFloat(el.value).toFixed(1) + "%";
     drawOverlay();
   };
 });
 
-videoInput.onchange=e=>{
-  if(!cvReady) return;
-  video.src=URL.createObjectURL(e.target.files[0]);
-  video.onloadedmetadata=()=>{
-    overlay.width=video.videoWidth;
-    overlay.height=video.videoHeight;
+// Video Input Listener
+inputVideo.onchange = e => {
+  if(!cvReady) return alert("Please wait for OpenCV to load.");
+  if(!e.target.files[0]) return;
+
+  video.src = URL.createObjectURL(e.target.files[0]);
+  video.onloadedmetadata = () => {
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
     drawOverlay();
 
-    /* ⭐ new line change — time slider setup */
-    startTime.min=0;
-    endTime.min=0;
-    startTime.max=video.duration;
-    endTime.max=video.duration;
-    endTime.value=video.duration;
-    v-end.innerText=video.duration.toFixed(1)+"s";
+    // Setup Time Sliders
+    sStart.min = 0;
+    sEnd.min = 0;
+    sStart.max = video.duration;
+    sEnd.max = video.duration;
+    sEnd.value = video.duration;
+    
+    // Fix: Use getElementById for IDs with hyphens
+    document.getElementById("v-end").innerText = video.duration.toFixed(1) + "s";
 
-    processBtn.disabled=false;
-    status.innerText="Video ready.";
+    btnProcess.disabled = false;
+    statusText.innerText = "Video ready.";
   };
 };
 
-/* ⭐ new line change — time slider sync */
-startTime.oninput=()=>{
-  if(parseFloat(startTime.value)>parseFloat(endTime.value)){
-    startTime.value=endTime.value;
+// Time Slider Listeners
+sStart.oninput = () => {
+  if(parseFloat(sStart.value) > parseFloat(sEnd.value)){
+    sStart.value = sEnd.value;
   }
-  v-start.innerText=parseFloat(startTime.value).toFixed(1)+"s";
-};
-endTime.oninput=()=>{
-  if(parseFloat(endTime.value)<parseFloat(startTime.value)){
-    endTime.value=startTime.value;
-  }
-  v-end.innerText=parseFloat(endTime.value).toFixed(1)+"s";
+  document.getElementById("v-start").innerText = parseFloat(sStart.value).toFixed(1) + "s";
+  // Optional: Seek video to preview time
+  video.currentTime = sStart.value;
 };
 
-processBtn.onclick=()=>{
-  status.innerText=`Scanning ${startTime.value}s → ${endTime.value}s`;
-  btnDownload.style.display="block";
+sEnd.oninput = () => {
+  if(parseFloat(sEnd.value) < parseFloat(sStart.value)){
+    sEnd.value = sStart.value;
+  }
+  document.getElementById("v-end").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
+  // Optional: Seek video to preview time
+  video.currentTime = sEnd.value;
 };
 
-btnDownload.onclick=()=>{
-  const data={start:startTime.value,end:endTime.value};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="pattern.json";
+// Process Button
+btnProcess.onclick = () => {
+  statusText.innerText = `Scanning range: ${sStart.value}s → ${sEnd.value}s`;
+  // Logic OpenCV detection akan masuk di sini nanti
+  // Untuk sekarang, kita tampilkan tombol download
+  btnDownload.style.display = "block";
+};
+
+// Download Button
+btnDownload.onclick = () => {
+  const data = {
+    start: sStart.value,
+    end: sEnd.value,
+    margins: {
+        top: sTop.value,
+        bottom: sBot.value,
+        side: sSide.value
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "pattern.json";
+  document.body.appendChild(a); // Required for Firefox
   a.click();
+  document.body.removeChild(a);
 };
 </script>
 
