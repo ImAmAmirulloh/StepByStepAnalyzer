@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pattern Recorder - Precision Shift V4</title>
+<title>Pattern Recorder - Complete V5</title>
 
 <style>
-    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; }
+    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
     body { 
         font-family: 'Segoe UI', sans-serif; 
-        background: var(--bg); 
-        color: var(--text); 
+        background: var(--bg); color: var(--text); 
         margin: 0; padding: 10px; 
         display: flex; flex-direction: column; align-items: center; 
     }
@@ -23,7 +22,6 @@
 
     .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
     .nav-header h2 { margin: 0; color: #2c3e50; }
-    .nav-header p { margin: 5px 0 0 0; font-size: 0.8rem; color: #7f8c8d; }
 
     .preview-wrapper { 
         position: relative; width: 100%; background: #000; 
@@ -33,22 +31,26 @@
     #videoPlayer { width: 100%; display: block; }
     #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-    /* SLIDERS */
+    /* SLIDERS AREA */
     .control-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; }
-    .slider-row { margin-bottom: 10px; }
-    .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
-    .val-badge { background: #e1e1e1; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+    .slider-section { margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
+    .slider-section:last-child { border-bottom: none; margin-bottom: 0; }
+    .slider-title { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; text-transform: uppercase; margin-bottom: 8px; display: block; }
+    
+    .slider-row { margin-bottom: 8px; }
+    .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
+    .val-badge { background: #e1e1e1; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
     input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
 
     /* GRID VISUALIZATION */
     .results-grid { 
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; 
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; 
         margin-top: 15px; width: 100%; 
     }
     .cell { 
         aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; 
         display: flex; align-items: center; justify-content: center; 
-        font-weight: bold; font-size: 1.2rem; color: #bdc3c7; 
+        font-weight: bold; font-size: 1.1rem; color: #bdc3c7; 
         transition: all 0.2s;
     }
     .cell.detected { 
@@ -60,11 +62,12 @@
     .btn { 
         width: 100%; padding: 12px; border: none; border-radius: 6px; 
         font-weight: bold; cursor: pointer; font-size: 1rem; color: white; 
-        margin-top: 5px; 
+        margin-top: 5px; transition: 0.2s;
     }
     .btn-start { background: var(--primary); }
     .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-    .btn-download { background: #2ecc71; margin-top: 15px; display: none; }
+    .btn-download { background: var(--success); margin-top: 15px; display: none; }
+    .btn:hover:not(:disabled) { opacity: 0.9; }
 
     #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
 </style>
@@ -74,11 +77,11 @@
 
 <div class="main-container">
     <div class="nav-header">
-        <h2>Memory Pattern Recorder</h2>
-        <p>Base: 1260x2800 Precision Template</p>
+        <h2>Pattern Recorder V5</h2>
+        <p style="font-size:0.8rem; color:#999;">Fitur Lengkap: Slider Waktu & Margin</p>
     </div>
 
-    <input type="file" id="videoInput" accept="video/*" style="margin-bottom: 10px; width:100%;">
+    <input type="file" id="videoInput" accept="video/*" style="width:100%; margin-bottom:10px;">
     
     <div class="preview-wrapper">
         <video id="videoPlayer" muted playsinline></video>
@@ -86,21 +89,39 @@
     </div>
 
     <div class="control-panel">
-        <div class="slider-row">
-            <div class="slider-header"><span>GESER X (Kiri/Kanan)</span><span id="v-x" class="val-badge">0 px</span></div>
-            <input type="range" id="shiftX" min="-100" max="100" value="0">
+        <div class="slider-section">
+            <span class="slider-title">Pengaturan Area (Margin)</span>
+            <div class="slider-row">
+                <div class="slider-header"><span>ATAS (Top)</span><span id="v-t" class="val-badge">23%</span></div>
+                <input type="range" id="marginTop" min="0" max="50" step="0.1" value="23">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><span>BAWAH (Bottom)</span><span id="v-b" class="val-badge">15%</span></div>
+                <input type="range" id="marginBottom" min="0" max="50" step="0.1" value="15">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><span>SAMPING (Side)</span><span id="v-s" class="val-badge">5%</span></div>
+                <input type="range" id="marginSide" min="0" max="30" step="0.1" value="5">
+            </div>
         </div>
-        <div class="slider-row">
-            <div class="slider-header"><span>GESER Y (Atas/Bawah)</span><span id="v-y" class="val-badge">0 px</span></div>
-            <input type="range" id="shiftY" min="-200" max="200" value="0">
+
+        <div class="slider-section">
+            <span class="slider-title">Pengaturan Waktu Video</span>
+            <div class="slider-row">
+                <div class="slider-header"><span>MULAI (Start)</span><span id="v-start" class="val-badge">0.0s</span></div>
+                <input type="range" id="startTime" step="0.1" value="0">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><span>SELESAI (End)</span><span id="v-end" class="val-badge">0.0s</span></div>
+                <input type="range" id="endTime" step="0.1" value="0">
+            </div>
         </div>
+
         <button id="processBtn" class="btn btn-start" disabled>▶ MULAI SCAN</button>
     </div>
 
     <div id="status">Menunggu OpenCV...</div>
-    
     <div id="grid" class="results-grid"></div>
-    
     <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON KEYMAPPER</button>
 </div>
 
@@ -110,114 +131,142 @@
 let cvReady = false;
 let zones = []; 
 let currentStep = 1;
+const ROWS = 5;
+const COLS = 4;
 
-// 1. DATA KOORDINAT MENTAH (Sesuai request awal JSON Anda)
-// Format urutan: Baris 1 (kiri ke kanan), Baris 2, dst.
-const RAW_COORDS = [
-    {x: 170, y: 845},  {x: 480, y: 845},  {x: 790, y: 845},  {x: 1100, y: 845},
-    {x: 170, y: 1145}, {x: 480, y: 1145}, {x: 790, y: 1145}, {x: 1100, y: 1145},
-    {x: 170, y: 1445}, {x: 480, y: 1445}, {x: 790, y: 1445}, {x: 1100, y: 1445},
-    {x: 170, y: 1745}, {x: 480, y: 1745}, {x: 790, y: 1745}, {x: 1100, y: 1745},
-    {x: 170, y: 2045}, {x: 480, y: 2045}, {x: 790, y: 2045}, {x: 1100, y: 2045}
-];
-
-// Inisialisasi Tampilan Grid (1-20)
+// Inisialisasi Grid 1-20
 const gridEl = document.getElementById('grid');
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
-    d.className = 'cell';
-    d.id = `c-${i}`;
-    d.innerText = i + 1;
+    d.className = 'cell'; d.id = `c-${i}`; d.innerText = i + 1;
     gridEl.appendChild(d);
 }
 
-// Element Definitions
-const videoPlayer = document.getElementById('videoPlayer');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
+// Elemen DOM
+const video = document.getElementById('videoPlayer');
+const overlay = document.getElementById('overlayCanvas');
+const ctx = overlay.getContext('2d');
 const procCanvas = document.getElementById('procCanvas');
 const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
 const statusEl = document.getElementById('status');
-const shiftXEl = document.getElementById('shiftX');
-const shiftYEl = document.getElementById('shiftY');
-const vxEl = document.getElementById('v-x');
-const vyEl = document.getElementById('v-y');
+
+// Sliders DOM
+const sTop = document.getElementById('marginTop');
+const sBot = document.getElementById('marginBottom');
+const sSide = document.getElementById('marginSide');
+const sStart = document.getElementById('startTime');
+const sEnd = document.getElementById('endTime');
 
 function onOpenCvReady() {
     cvReady = true;
-    statusEl.innerText = "Siap. Pilih video rekaman layar.";
+    statusEl.innerText = "Siap. Pilih video.";
 }
-
-// Logic: Ambil koordinat dasar, tambahkan nilai slider
-function getAdjustedCoords() {
-    const ox = parseInt(shiftXEl.value);
-    const oy = parseInt(shiftYEl.value);
-    
-    return RAW_COORDS.map((c, index) => {
-        return {
-            id: index,
-            // Koordinat Asli + Geseran Slider
-            finalX: c.x + ox,
-            finalY: c.y + oy,
-            // Koordinat string asli untuk disimpan di JSON (opsional, atau mau yg final?)
-            // Kita simpan yg final agar akurat sesuai geseran user
-            jsonString: `${c.x + ox},${c.y + oy}` 
-        };
-    });
-}
-
-// Gambar Overlay Kotak Hijau & Titik Kuning
-function drawOverlay() {
-    if(!videoPlayer.videoWidth) return;
-    overlayCtx.clearRect(0,0, overlayCanvas.width, overlayCanvas.height);
-    
-    const coords = getAdjustedCoords();
-    
-    coords.forEach(c => {
-        // Kotak Deteksi (Ukuran 100x100, ditengah titik)
-        const size = 100;
-        const rectX = c.finalX - (size/2);
-        const rectY = c.finalY - (size/2);
-
-        overlayCtx.strokeStyle = "rgba(0, 255, 0, 0.7)"; // Hijau
-        overlayCtx.lineWidth = 2;
-        overlayCtx.strokeRect(rectX, rectY, size, size);
-
-        // Titik Tengah (Tap Point)
-        overlayCtx.fillStyle = "yellow";
-        overlayCtx.beginPath();
-        overlayCtx.arc(c.finalX, c.finalY, 5, 0, Math.PI * 2);
-        overlayCtx.fill();
-    });
-}
-
-// Event Listeners Slider
-shiftXEl.addEventListener('input', (e) => {
-    vxEl.innerText = e.target.value + " px";
-    drawOverlay();
-});
-shiftYEl.addEventListener('input', (e) => {
-    vyEl.innerText = e.target.value + " px";
-    drawOverlay();
-});
 
 // Load Video
 document.getElementById('videoInput').addEventListener('change', (e) => {
-    if(e.target.files[0]) {
-        const url = URL.createObjectURL(e.target.files[0]);
-        videoPlayer.src = url;
-        videoPlayer.onloadedmetadata = () => {
-            // Set canvas size sesuai resolusi video asli
-            overlayCanvas.width = videoPlayer.videoWidth;
-            overlayCanvas.height = videoPlayer.videoHeight;
-            procCanvas.width = videoPlayer.videoWidth;
-            procCanvas.height = videoPlayer.videoHeight;
+    if(!e.target.files[0]) return;
+    video.src = URL.createObjectURL(e.target.files[0]);
+    video.onloadedmetadata = () => {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+        procCanvas.width = video.videoWidth;
+        procCanvas.height = video.videoHeight;
+        
+        // Setup Slider Waktu
+        sStart.max = video.duration;
+        sEnd.max = video.duration;
+        sEnd.value = video.duration;
+        document.getElementById('v-end').innerText = video.duration.toFixed(1) + "s";
+        
+        drawOverlay();
+        document.getElementById('processBtn').disabled = false;
+        statusEl.innerText = "Video dimuat. Atur margin dan waktu.";
+    };
+});
+
+// === LOGIKA GRID & OVERLAY ===
+function getZoneCalculations() {
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    const t = parseFloat(sTop.value) / 100;
+    const b = parseFloat(sBot.value) / 100;
+    const s = parseFloat(sSide.value) / 100;
+
+    const startX = w * s;
+    const endX = w * (1 - s);
+    const startY = h * t;
+    const endY = h * (1 - b);
+    
+    const boxW = (endX - startX) / COLS;
+    const boxH = (endY - startY) / ROWS;
+
+    let calculatedZones = [];
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            const x = startX + (c * boxW);
+            const y = startY + (r * boxH);
+            const cx = Math.floor(x + (boxW/2));
+            const cy = Math.floor(y + (boxH/2));
             
-            drawOverlay();
-            document.getElementById('processBtn').disabled = false;
-            statusEl.innerText = "Video dimuat. Sesuaikan kotak hijau dengan kartu.";
-        };
+            calculatedZones.push({
+                id: (r*COLS) + c,
+                x: Math.floor(x + boxW*0.1), // ROI lebih kecil utk deteksi
+                y: Math.floor(y + boxH*0.1),
+                w: Math.floor(boxW*0.8),
+                h: Math.floor(boxH*0.8),
+                cx: cx, // Koordinat Tap Presisi
+                cy: cy,
+                locked: false,
+                step: 0
+            });
+        }
     }
+    return calculatedZones;
+}
+
+function drawOverlay() {
+    if(!video.videoWidth) return;
+    ctx.clearRect(0,0, overlay.width, overlay.height);
+    
+    const currentZones = getZoneCalculations();
+    
+    currentZones.forEach(z => {
+        // Kotak Deteksi Hijau
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.6)"; // Cyan
+        ctx.lineWidth = 2;
+        ctx.strokeRect(z.x, z.y, z.w, z.h);
+
+        // Titik Tengah (Tap Point)
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(z.cx, z.cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+// Event Listeners Slider Margin
+[sTop, sBot, sSide].forEach(el => {
+    el.addEventListener('input', () => {
+        let badgeId = "";
+        if(el.id === "marginTop") badgeId = "v-t";
+        else if(el.id === "marginBottom") badgeId = "v-b";
+        else if(el.id === "marginSide") badgeId = "v-s";
+        document.getElementById(badgeId).innerText = parseFloat(el.value).toFixed(1) + "%";
+        drawOverlay();
+    });
+});
+
+// Event Listeners Slider Waktu
+sStart.addEventListener('input', () => {
+    if(parseFloat(sStart.value) > parseFloat(sEnd.value)) sStart.value = sEnd.value;
+    document.getElementById("v-start").innerText = parseFloat(sStart.value).toFixed(1) + "s";
+    video.currentTime = sStart.value; // Preview frame
+});
+
+sEnd.addEventListener('input', () => {
+    if(parseFloat(sEnd.value) < parseFloat(sStart.value)) sEnd.value = sStart.value;
+    document.getElementById("v-end").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
+    video.currentTime = sEnd.value; // Preview frame
 });
 
 // === PROSES SCANNING ===
@@ -225,91 +274,76 @@ document.getElementById('processBtn').onclick = async () => {
     if(!cvReady) return;
     document.getElementById('processBtn').disabled = true;
     document.getElementById('btnDownload').style.display = 'none';
-    statusEl.innerText = "Sedang memproses pola...";
+    statusEl.innerText = "Scanning berjalan...";
     
-    // Reset Grid
     currentStep = 1;
+    // Reset Grid
     document.querySelectorAll('.cell').forEach(c => {
         c.className = 'cell';
-        c.innerText = c.id.replace('c-', '') * 1 + 1; // Reset angka 1-20
+        c.innerText = c.id.replace('c-', '')*1 + 1;
     });
 
-    // Siapkan Zones berdasarkan Slider terakhir
-    const adjusted = getAdjustedCoords();
-    zones = adjusted.map(c => ({
-        id: c.id,
-        jsonString: c.jsonString,
-        // Region of Interest (ROI) untuk OpenCV
-        x: c.finalX - 50,
-        y: c.finalY - 50,
-        w: 100, 
-        h: 100,
-        locked: false,
-        stepOrder: 0
-    }));
+    zones = getZoneCalculations(); // Kunci posisi berdasarkan slider saat ini
 
-    let cap = new cv.VideoCapture(videoPlayer);
-    let gray = new cv.Mat();
-    let prevGray = new cv.Mat();
-    let diff = new cv.Mat();
-    
-    let currentTime = 0;
-    const interval = 0.1; // Cek setiap 0.1 detik video
+    let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
+    let interval = 0.1; 
     let cooldown = 0;
+    
+    // Set Waktu Awal
+    let currentTime = parseFloat(sStart.value);
+    const endTimeVal = parseFloat(sEnd.value);
 
     async function processFrame() {
-        if(currentTime >= videoPlayer.duration) {
-            statusEl.innerText = "Selesai! Silakan download JSON.";
+        if(currentTime >= endTimeVal || currentTime >= video.duration) {
+            statusEl.innerText = "Selesai! Download JSON.";
             document.getElementById('processBtn').disabled = false;
             document.getElementById('btnDownload').style.display = 'block';
-            
-            // Clean up memory
-            gray.delete(); prevGray.delete(); diff.delete(); 
+            gray.delete(); prevGray.delete(); diff.delete();
             return;
         }
 
-        videoPlayer.currentTime = currentTime;
-        await new Promise(r => { videoPlayer.onseeked = r; });
+        video.currentTime = currentTime;
+        await new Promise(r => { video.onseeked = r; });
 
-        procCtx.drawImage(videoPlayer, 0, 0);
+        procCtx.drawImage(video, 0, 0);
         let src = cv.imread(procCanvas);
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
+        // Visual Feedback (Zona Terkunci jadi Merah)
+        ctx.clearRect(0,0, overlay.width, overlay.height);
+        // Gambar ulang grid dasar (tipis)
+        ctx.globalAlpha = 0.3; drawOverlay(); ctx.globalAlpha = 1.0; 
+
+        zones.filter(z => z.locked).forEach(z => {
+            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4;
+            ctx.strokeRect(z.x, z.y, z.w, z.h);
+            ctx.fillStyle = "#e74c3c"; ctx.font = "bold 40px Arial";
+            ctx.fillText(z.step, z.cx - 10, z.cy + 10);
+        });
+
         if(!prevGray.empty() && cooldown <= 0) {
             cv.absdiff(gray, prevGray, diff);
-            cv.threshold(diff, diff, 50, 255, cv.THRESH_BINARY);
+            cv.threshold(diff, diff, 45, 255, cv.THRESH_BINARY);
             
             let detected = [];
-            
-            // Cek setiap zona
             zones.forEach(z => {
-                if(z.locked) return; // Skip yang sudah ketemu
-                
-                // Ambil potongan gambar di area kotak
+                if(z.locked) return;
                 let roi = diff.roi(new cv.Rect(z.x, z.y, z.w, z.h));
-                let changes = cv.countNonZero(roi);
+                if(cv.countNonZero(roi) > (z.w * z.h * 0.15)) detected.push(z);
                 roi.delete();
-
-                // Jika perubahan pixel cukup besar (kartu membalik)
-                if(changes > (z.w * z.h * 0.2)) {
-                    detected.push(z);
-                }
             });
 
-            // Jika ada deteksi (biasanya sepasang 2 kartu)
-            if(detected.length > 0) {
-                // Ambil kartu pertama yg terdeteksi (atau keduanya)
+            if(detected.length > 0 && detected.length <= 2) {
                 let target = detected[0];
                 target.locked = true;
-                target.stepOrder = currentStep;
+                target.step = currentStep;
                 
-                // Update Visual Grid
                 let cell = document.getElementById(`c-${target.id}`);
                 cell.classList.add('detected');
                 cell.innerText = currentStep;
                 
                 currentStep++;
-                cooldown = 3; // Jeda sebentar agar tidak double detect
+                cooldown = 4; 
             }
         }
 
@@ -319,37 +353,27 @@ document.getElementById('processBtn').onclick = async () => {
         currentTime += interval;
         requestAnimationFrame(processFrame);
     }
-    
     processFrame();
 };
 
-// === GENERATE JSON (STRUKTUR LENGKAP KEYMAPPER) ===
+// === JSON DOWNLOAD (STRUKTUR LENGKAP) ===
 document.getElementById('btnDownload').onclick = () => {
-    // Urutkan zona berdasarkan urutan terdeteksi (stepOrder)
-    const activeSteps = zones
-        .filter(z => z.locked)
-        .sort((a,b) => a.stepOrder - b.stepOrder);
+    const steps = zones.filter(z => z.locked).sort((a,b) => a.step - b.step);
+    
+    if(steps.length === 0) return alert("Tidak ada pola ditemukan!");
 
-    // Buat Action List sesuai template Anda
-    const actionList = activeSteps.map(s => ({
-        "data": s.jsonString, // Koordinat akurat (misal: "175,850")
+    const actionList = steps.map(s => ({
+        "type": "TAP_COORDINATE",
+        "data": `${s.cx},${s.cy}`, // Koordinat hasil hitungan margin
         "extras": [
-            { 
-                "data": String(s.stepOrder), 
-                "id": "extra_coordinate_description" 
-            },
-            { 
-                "data": 120, 
-                "id": "extra_delay_before_next_action" 
-            }
+            { "id": "extra_coordinate_description", "data": String(s.step) },
+            { "id": "extra_delay_before_next_action", "data": 120 }
         ],
         "flags": 0,
-        "type": "TAP_COORDINATE",
         "uid": crypto.randomUUID()
     }));
 
-    // Struktur Utuh JSON
-    const finalJson = {
+    const keymapData = {
         "app_version": 63,
         "keymap_db_version": 13,
         "fingerprint_map_list": [
@@ -358,38 +382,31 @@ document.getElementById('btnDownload').onclick = () => {
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
             { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
         ],
-        "keymap_list": [
-            {
-                "actionList": actionList,
-                "constraintList": [],
-                "constraintMode": 1,
-                "flags": 0,
-                "id": 27,
-                "isEnabled": true,
-                "trigger": {
-                    "extras": [],
-                    "flags": 1,
-                    "keys": [
-                        {
-                            "clickType": 2,
-                            "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
-                            "flags": 0,
-                            "keyCode": 24, // Volume UP
-                            "uid": crypto.randomUUID()
-                        }
-                    ],
-                    "mode": 2
-                },
-                "uid": crypto.randomUUID()
-            }
-        ]
+        "keymap_list": [{
+            "actionList": actionList,
+            "constraintList": [],
+            "constraintMode": 1,
+            "flags": 0,
+            "id": 27,
+            "isEnabled": true,
+            "trigger": {
+                "extras": [],
+                "flags": 1,
+                "keys": [{ 
+                    "clickType": 2, "deviceId": "io.github.sds100.keymapper.THIS_DEVICE", 
+                    "flags": 0, "keyCode": 24, "uid": crypto.randomUUID() 
+                }],
+                "mode": 2
+            },
+            "uid": crypto.randomUUID()
+        }]
     };
 
-    const blob = new Blob([JSON.stringify(finalJson, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(keymapData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `KeyMap_Pattern_${new Date().getTime()}.json`;
+    a.download = `Pattern_Result_${Date.now()}.json`;
     a.click();
 };
 </script>
