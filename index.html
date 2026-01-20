@@ -128,6 +128,17 @@
             accent-color: var(--primary);
             cursor: pointer;
         }
+        input[type=range]::-webkit-slider-runnable-track {
+            appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            --webkit-appearance: none;
+            appearance: none;
+            height: 80px;
+            width: 80px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
         .btn {
             width: 100%;
             padding: 12px;
@@ -884,7 +895,7 @@ document.getElementById('btnDownload').onclick = () => {
         "extras": [],
         "flags": 1,
         "keys": [{
-          "clickType": 2,
+          "clickType": 0,
           "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
           "flags": 0,
           "keyCode": 24,
