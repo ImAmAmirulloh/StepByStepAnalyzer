@@ -6,70 +6,171 @@
 <title>Pattern Recorder - Complete V5</title>
 
 <style>
-    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
+    :root {
+        --primary: #00bcd4;
+        --bg: #f5f6fa;
+        --text: #2f3640;
+        --danger: #e74c3c;
+        --success: #2ecc71;
+    }
     body { 
         font-family: 'Segoe UI', sans-serif; 
-        background: var(--bg); color: var(--text); 
-        margin: 0; padding: 10px; 
-        display: flex; flex-direction: column; align-items: center; 
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
-    
     .main-container { 
-        background: white; padding: 20px; border-radius: 12px; 
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-        max-width: 600px; width: 100%; box-sizing: border-box; 
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        max-width: 600px;
+        width: 100%;
+        box-sizing: border-box;
     }
-
-    .nav-header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .nav-header h2 { margin: 0; color: #2c3e50; }
-
+    .nav-header {
+        text-align: center;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    .nav-header h2 {
+        margin: 0;
+        color: #2c3e50;
+    }
     .preview-wrapper { 
-        position: relative; width: 100%; background: #000; 
-        border-radius: 8px; overflow: hidden; margin-bottom: 15px; 
-        border: 2px solid #333; line-height: 0;
+        position: relative;
+        width: 100%;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 15px;
+        border: 2px solid #333;
+        line-height: 0;
     }
-    #videoPlayer { width: 100%; display: block; }
-    #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-
+    #videoPlayer {
+        width: 100%;
+        display: block;
+    }
+    #overlayCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
     /* SLIDERS AREA */
-    .control-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; }
-    .slider-section { margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
-    .slider-section:last-child { border-bottom: none; margin-bottom: 0; }
-    .slider-title { font-size: 0.75rem; font-weight: bold; color: #7f8c8d; text-transform: uppercase; margin-bottom: 8px; display: block; }
-    
-    .slider-row { margin-bottom: 8px; }
-    .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
-    .val-badge { background: #e1e1e1; padding: 1px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
-    input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
-
+    .control-panel {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 15px;
+    }
+    .slider-section {
+        margin-bottom: 15px;
+        border-bottom: 1px dashed #ddd;
+        padding-bottom: 10px;
+    }
+    .slider-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    .slider-title {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .slider-row {
+        margin-bottom: 8px;
+    }
+    .slider-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        font-weight: bold;
+        margin-bottom: 2px;
+    }
+    .val-badge {
+        background: #e1e1e1;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.8rem;
+    }
+    input[type=range] {
+        width: 100%;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
     /* GRID VISUALIZATION */
     .results-grid { 
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; 
-        margin-top: 15px; width: 100%; 
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-top: 15px;
+        width: 100%;
     }
     .cell { 
-        aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; 
-        display: flex; align-items: center; justify-content: center; 
-        font-weight: bold; font-size: 1.1rem; color: #bdc3c7; 
+        aspect-ratio: 1;
+        background: #ecf0f1;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: #bdc3c7;
         transition: all 0.2s;
     }
     .cell.detected { 
-        background: white; border: 2px solid var(--danger); 
-        color: var(--danger); box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
+        background: white;
+        border: 2px solid var(--danger);
+        color: var(--danger);
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
     }
-
     /* BUTTONS */
     .btn { 
-        width: 100%; padding: 12px; border: none; border-radius: 6px; 
-        font-weight: bold; cursor: pointer; font-size: 1rem; color: white; 
-        margin-top: 5px; transition: 0.2s;
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 1rem;
+        color: white;
+        margin-top: 5px;
+        transition: 0.2s;
     }
-    .btn-start { background: var(--primary); }
-    .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-    .btn-download { background: var(--success); margin-top: 15px; display: none; }
-    .btn:hover:not(:disabled) { opacity: 0.9; }
-
-    #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
+    .btn-start {
+        background: var(--primary);
+    }
+    .btn-start:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+    }
+    .btn-download {
+        background: var(--success);
+        margin-top: 15px;
+        display: none;
+    }
+    .btn:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+    #status {
+        text-align: center;
+        font-size: 0.9rem;
+        margin: 10px 0;
+        color: #7f8c8d;
+    }
 </style>
 <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
 </head>
@@ -136,31 +237,73 @@ const COLS = 4;
 
 // Inisialisasi Grid 1-20
 const gridEl = document.getElementById('grid');
+gridEl.innerHTML = '';
 for(let i=0; i<20; i++) {
     let d = document.createElement('div');
-    d.className = 'cell'; d.id = `c-${i}`; d.innerText = i + 1;
+    d.className = 'cell';
+    d.id = `c-${i}`;
+    d.innerText = i + 1;
     gridEl.appendChild(d);
 }
 
-// Elemen DOM
 const video = document.getElementById('videoPlayer');
 const overlay = document.getElementById('overlayCanvas');
 const ctx = overlay.getContext('2d');
 const procCanvas = document.getElementById('procCanvas');
 const procCtx = procCanvas.getContext('2d', {willReadFrequently: true});
 const statusEl = document.getElementById('status');
-
-// Sliders DOM
 const sTop = document.getElementById('marginTop');
 const sBot = document.getElementById('marginBottom');
 const sSide = document.getElementById('marginSide');
 const sStart = document.getElementById('startTime');
 const sEnd = document.getElementById('endTime');
 
+// --- LOCAL STORAGE & INIT ---
+window.addEventListener('load', () => {
+  loadSliderSettings();
+});
+
 function onOpenCvReady() {
     cvReady = true;
     statusEl.innerText = "Siap. Pilih video.";
 }
+
+function saveSliderSettings() {
+  const settings = {
+    top: document.getElementById('marginTop').value,
+    bottom: document.getElementById('marginBottom').value,
+    side: document.getElementById('marginSide').value
+  };
+  localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
+}
+
+function loadSliderSettings() {
+  const saved = localStorage.getItem('patternRecorderMargins');
+  if (saved) {
+    const settings = JSON.parse(saved);
+    if (settings.top) {
+      document.getElementById('marginTop').value = settings.top;
+      document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
+    }
+    if (settings.bottom) {
+      document.getElementById('marginBottom').value = settings.bottom;
+      document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
+    }
+    if (settings.side) {
+      document.getElementById('marginSide').value = settings.side;
+      document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
+    }
+  }
+}
+
+['marginTop', 'marginBottom', 'marginSide'].forEach(id => {
+  document.getElementById(id).addEventListener('input', (e) => {
+    const badgeId = id === 'marginTop' ? 'v-t' : (id === 'marginBottom' ? 'v-b' : 'v-s');
+    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1) + "%";
+    saveSliderSettings();
+    drawOverlay();
+  });
+});
 
 // Load Video
 document.getElementById('videoInput').addEventListener('change', (e) => {
@@ -184,7 +327,7 @@ document.getElementById('videoInput').addEventListener('change', (e) => {
     };
 });
 
-// === LOGIKA GRID & OVERLAY ===
+//LOGIKA GRID & OVERLAY
 function getZoneCalculations() {
     const w = video.videoWidth;
     const h = video.videoHeight;
@@ -269,13 +412,12 @@ sEnd.addEventListener('input', () => {
     video.currentTime = sEnd.value; // Preview frame
 });
 
-// === PROSES SCANNING ===
+//PROSES SCANNING
 document.getElementById('processBtn').onclick = async () => {
     if(!cvReady) return;
     document.getElementById('processBtn').disabled = true;
     document.getElementById('btnDownload').style.display = 'none';
     statusEl.innerText = "Scanning berjalan...";
-    
     currentStep = 1;
     // Reset Grid
     document.querySelectorAll('.cell').forEach(c => {
@@ -285,7 +427,9 @@ document.getElementById('processBtn').onclick = async () => {
 
     zones = getZoneCalculations(); // Kunci posisi berdasarkan slider saat ini
 
-    let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
+    let gray = new cv.Mat(),
+    prevGray = new cv.Mat(),
+    diff = new cv.Mat();
     let interval = 0.1; 
     let cooldown = 0;
     

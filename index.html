@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Video Pattern Recorder - Margin Precision</title>
     <style>
-        :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
+        :root {
+            --primary: #00bcd4;
+            --bg: #f5f6fa;
+            --text: #2f3640;
+            --danger: #e74c3c;
+            --success: #2ecc71; }
         body { 
             font-family: 'Segoe UI', sans-serif; 
             background: var(--bg); 
@@ -16,7 +21,6 @@
             flex-direction: column; 
             align-items: center; 
         }
-        
         .main-container { 
             background: white; 
             padding: 20px; 
@@ -26,15 +30,32 @@
             width: 100%; 
             box-sizing: border-box; 
         }
-
-        /* Nav Header */
-        .nav-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .nav-header h2 { margin: 5px 0 5px 0; color: #2c3e50; font-size: 1.2rem; }
-        .nav-header a { text-decoration: none; color: #999; font-size: 0.9rem; margin: 0 5px; transition: color 0.2s; }
-        .nav-header a:hover { color: var(--primary); }
-        .nav-header .active { color: var(--primary); font-weight: bold; font-size: 1.1rem; }
-
-        /* Preview */
+        .nav-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .nav-header h2 {
+            margin: 5px 0 5px 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+        .nav-header a {
+            text-decoration: none;
+            color: #999;
+            font-size: 0.9rem;
+            margin: 0 5px;
+            transition: color 0.2s;
+        }
+        .nav-header a:hover {
+            color: var(--primary);
+        }
+        .nav-header .active {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
         .preview-wrapper { 
             position: relative; 
             width: 100%; 
@@ -45,32 +66,134 @@
             line-height: 0; 
             border: 2px solid #333;
         }
-        #videoPlayer { width: 100%; display: block; }
-        #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-
-        /* Controls */
-        .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
-        .slider-row { margin-bottom: 12px; }
-        .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
-        .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
-        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
-        
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
-        .btn-start { background: var(--primary); }
-        .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-        .btn-download { background: var(--success); margin-top: 15px; display: none; }
-        
-        .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; width: 100%; }
-        .cell { aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #bdc3c7; }
-        .cell.detected { background: white; border: 2px solid var(--danger); color: var(--danger); }
-
-        #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
-
-        #videoInput { margin-bottom: 15px; width: 100%; }
+        #videoPlayer {
+            width: 100%;
+            display: block;
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .control-panel {
+            background: #fdfdfd;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .slider-section {
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #ddd;
+            padding-bottom: 10px;
+        }
+        .slider-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .slider-title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .slider-row {
+            margin-bottom: 12px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .slider-header label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #636e72;
+        }
+        .val-badge {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            color: white;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+        .btn-start {
+            background: var(--primary);
+        }
+        .btn-start:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .btn-download {
+            background: var(--success);
+            margin-top: 15px;
+            display: none;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: #ecf0f1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #bdc3c7;
+        }
+        .cell.detected {
+            background: white;
+            border: 2px solid var(--danger);
+            color: var(--danger);
+        }
+        #status {
+            text-align: center;
+            font-size: 0.9rem;
+            margin: 10px 0;
+            color: #7f8c8d;
+        }
+        #videoInput {
+            margin-bottom: 15px;
+            width: 100%;
+        }
         input[type="file"]::file-selector-button {
-            background-color: var(--primary); color: white; border: none; padding: 8px 12px;
-            border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: bold;
         }
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
@@ -95,17 +218,31 @@
     </div>
 
     <div class="control-panel">
-        <div class="slider-row">
-            <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
-            <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23.0">
+        <div class="slider-section">
+            <span class="slider-title">Pengaturan Area (Margin)</span>
+            <div class="slider-row">
+                <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
+                <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23.0">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
+                <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15.0">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
+                <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5.0">
+            </div>
         </div>
-        <div class="slider-row">
-            <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
-            <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15.0">
-        </div>
-        <div class="slider-row">
-            <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
-            <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5.0">
+        <div class="slider-section">
+            <span class="slider-title">Pengaturan Waktu Video</span>
+            <div class="slider-row">
+                <div class="slider-header"><span>MULAI (Start)</span><span id="vStart" class="val-badge">0.0s</span></div>
+                <input type="range" id="startTime" step="0.1" value="0">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><span>SELESAI (End)</span><span id="vEnd" class="val-badge">0.0s</span></div>
+                <input type="range" id="endTime" step="0.1" value="0">
+            </div>
         </div>
         <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
     </div>
@@ -728,6 +865,8 @@ document.getElementById('btnDownload').onclick = () => {
 let cvReady = false;
 let zones = [];
 let currentStep = 1;
+const ROWS = 5;
+const COLS = 4;
 
 // Initialize Grid UI (20 Cells for 4x5)
 const gridEl = document.getElementById('grid');
@@ -746,6 +885,11 @@ const overlayCtx = overlayCanvas.getContext('2d');
 const procCanvas = document.getElementById('procCanvas');
 const procCtx = procCanvas.getContext('2d');
 const statusEl = document.getElementById('status');
+const sTop = document.getElementById('marginTop');
+const sBot = document.getElementById('marginBottom');
+const sSide = document.getElementById('marginSide');
+const sStart = document.getElementById('startTime');
+const sEnd = document.getElementById('endTime');
 
 // Your fixed coordinates as center points (kept as metadata)
 const FIXED_CENTERS = [
@@ -804,27 +948,35 @@ function loadSliderSettings() {
   });
 });
 
+//Load Video
 document.getElementById('videoInput').addEventListener('change', (e) => {
   if (e.target.files[0]) {
     videoPlayer.src = URL.createObjectURL(e.target.files[0]);
     videoPlayer.onloadedmetadata = () => {
-      // Set canvas pixel sizes to video natural size
-      overlayCanvas.width = videoPlayer.videoWidth;
-      overlayCanvas.height = videoPlayer.videoHeight;
-      procCanvas.width = videoPlayer.videoWidth;
-      procCanvas.height = videoPlayer.videoHeight;
+        // Set canvas pixel sizes
+        overlayCanvas.width = videoPlayer.videoWidth;
+        overlayCanvas.height = videoPlayer.videoHeight;
+        procCanvas.width = videoPlayer.videoWidth;
+        procCanvas.height = videoPlayer.videoHeight;
 
-      // Also set CSS size to match displayed video if needed
-      overlayCanvas.style.width = videoPlayer.clientWidth + 'px';
-      overlayCanvas.style.height = (videoPlayer.clientWidth * (videoPlayer.videoHeight / videoPlayer.videoWidth)) + 'px';
+        // Setup Slider Waktu
+        sStart.max = video.duration;
+        sEnd.max = video.duration;
+        sEnd.value = video.duration;
+        document.getElementById('vEnd').innerText = video.duration.toFixed(1) + "s";
+        
+        // Also set CSS size to match displayed video if needed
+        overlayCanvas.style.width = videoPlayer.clientWidth + 'px';
+        overlayCanvas.style.height = (videoPlayer.clientWidth * (videoPlayer.videoHeight / videoPlayer.videoWidth)) + 'px';
 
-      drawOverlay();
-      document.getElementById('processBtn').disabled = false;
-      statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
+        drawOverlay();
+        document.getElementById('processBtn').disabled = false;
+        statusEl.innerText = "Video loaded. Adjust margins if needed, then click START SCANNING.";
     };
   }
 });
 
+//LOGIKA GRID & OVERLAY
 function getCalculatedZones() {
   if (overlayCanvas.width === 0) return [];
 
@@ -859,8 +1011,12 @@ function getCalculatedZones() {
       const cy = Math.round(zy + cellH / 2);
 
       calculatedZones.push({
-        x: Math.round(zx), y: Math.round(zy), w: Math.round(cellW), h: Math.round(cellH),
-        cx: cx, cy: cy,
+        x: Math.round(zx),
+        y: Math.round(zy),
+        w: Math.round(cellW),
+        h: Math.round(cellH),
+        cx: cx,
+        cy: cy,
         fixedX: FIXED_CENTERS[r * cols + c][0],
         fixedY: FIXED_CENTERS[r * cols + c][1]
       });
@@ -892,12 +1048,29 @@ function drawOverlay() {
   });
 }
 
+// Event Listeners Slider Waktu
+sStart.addEventListener('input', () => {
+    if(parseFloat(sStart.value) > parseFloat(sEnd.value)) sStart.value = sEnd.value;
+    document.getElementById("vStart").innerText = parseFloat(sStart.value).toFixed(1) + "s";
+    video.currentTime = sStart.value; // Preview frame
+});
+
+sEnd.addEventListener('input', () => {
+    if(parseFloat(sEnd.value) < parseFloat(sStart.value)) sEnd.value = sStart.value;
+    document.getElementById("vEnd").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
+    video.currentTime = sEnd.value; // Preview frame
+});
+
+//PROSES SCANNING
 document.getElementById('processBtn').onclick = async () => {
   document.getElementById('processBtn').disabled = true;
   document.getElementById('btnDownload').style.display = 'none';
+  statusEl.innerText = "Scanning berjalan...";
   currentStep = 1;
+
   document.querySelectorAll('.cell').forEach(c => {
     c.className = 'cell';
+    //c.innerText = c.id.replace('c-', '')*1 + 1;
     const idx = parseInt(c.id.split('-')[1], 10);
     c.innerText = idx + 1;
   });
@@ -907,17 +1080,28 @@ document.getElementById('processBtn').onclick = async () => {
     id: i,
     outputData: `${z.fixedX},${z.fixedY}`,
     // ROI will be computed dynamically around cx,cy in processFrame
-    x: Math.round(z.x), y: Math.round(z.y), w: Math.round(z.w), h: Math.round(z.h),
-    calcX: z.cx, calcY: z.cy,
-    fixedX: z.fixedX, fixedY: z.fixedY,
-    locked: false, step: 0
+    x: Math.round(z.x),
+    y: Math.round(z.y),
+    w: Math.round(z.w),
+    h: Math.round(z.h),
+    calcX: z.cx,
+    calcY: z.cy,
+    fixedX: z.fixedX,
+    fixedY: z.fixedY,
+    locked: false,
+    step: 0
   }));
 
   // OpenCV mats
-  let gray = new cv.Mat(), prevGray = new cv.Mat(), diff = new cv.Mat();
+  let gray = new cv.Mat(),
+  prevGray = new cv.Mat(),
+  diff = new cv.Mat();
 
   // Timing and detection parameters
-  let currentTime = 0;
+  //let currentTime = 0;
+  // Set Waktu Awal
+  let currentTime = parseFloat(sStart.value);
+  const endTimeVal = parseFloat(sEnd.value);
   const interval = 0.1; // seconds between samples
   const skipFactor = 5; // skip this many intervals after a detection
   const roiW = 120, roiH = 120;
@@ -1031,8 +1215,14 @@ document.getElementById('btnDownload').onclick = () => {
   const actionList = steps.map(s => ({
     "data": `${s.fixedX},${s.fixedY}`,
     "extras": [
-      { "data": String(s.step), "id": "extra_coordinate_description" },
-      { "data": 120, "id": "extra_delay_before_next_action" }
+      {
+        "data": String(s.step),
+        "id": "extra_coordinate_description"
+      },
+      {
+        "data": 120,
+        "id": "extra_delay_before_next_action"
+      }
     ],
     "flags": 0,
     "type": "TAP_COORDINATE",
@@ -1043,10 +1233,42 @@ document.getElementById('btnDownload').onclick = () => {
     "app_version": 63,
     "keymap_db_version": 13,
     "fingerprint_map_list": [
-      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
-      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
-      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
-      { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+      {
+        "action_list": [],
+        "constraints": [],
+        "constraint_mode": 1,
+        "extras": [],
+        "flags": 0,
+        "id": 0,
+        "enabled": true
+      },
+      {
+        "action_list": [],
+        "constraints": [],
+        "constraint_mode": 1,
+        "extras": [],
+        "flags": 0,
+        "id": 1,
+        "enabled": true
+      },
+      {
+        "action_list": [],
+        "constraints": [],
+        "constraint_mode": 1,
+        "extras": [],
+        "flags": 0,
+        "id": 2,
+        "enabled": true
+      },
+      {
+        "action_list": [],
+        "constraints": [],
+        "constraint_mode": 1,
+        "extras": [],
+        "flags": 0,
+        "id": 3,
+        "enabled": true
+      }
     ],
     "keymap_list": [{
       "actionList": actionList,
