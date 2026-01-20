@@ -256,6 +256,7 @@
             </div>
         </div>
         <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
+        <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
     </div>
     <div class="slider-section">
         <span class="slider-title">Resolusi Layar Target (KeyMapper)</span>
@@ -281,7 +282,6 @@
 
     <div id="status">Waiting for OpenCV...</div>
     <div id="grid" class="results-grid"></div>
-    <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
@@ -539,155 +539,6 @@ sEnd.addEventListener('input', () => {
 });
 
 //PROSES SCANNING
-/*
-document.getElementById('processBtn').onclick = async () => {
-  document.getElementById('processBtn').disabled = true;
-  document.getElementById('btnDownload').style.display = 'none';
-  statusEl.innerText = "Scanning berjalan...";
-  currentStep = 1;
-
-  document.querySelectorAll('.cell').forEach(c => {
-    c.className = 'cell';
-    //c.innerText = c.id.replace('c-', '')*1 + 1;
-    const idx = parseInt(c.id.split('-')[1], 10);
-    c.innerText = idx + 1;
-  });
-
-  const calcZones = getCalculatedZones();
-  zones = calcZones.map((z, i) => ({
-    id: i,
-    outputData: `${z.fixedX},${z.fixedY}`,
-    // ROI will be computed dynamically around cx,cy in processFrame
-    x: Math.round(z.x),
-    y: Math.round(z.y),
-    w: Math.round(z.w),
-    h: Math.round(z.h),
-    calcX: z.cx,
-    calcY: z.cy,
-    fixedX: z.fixedX,
-    fixedY: z.fixedY,
-    locked: false,
-    step: 0
-  }));
-
-  // OpenCV mats
-  let gray = new cv.Mat(),
-  prevGray = new cv.Mat(),
-  diff = new cv.Mat();
-
-  //Timing and detection parameters
-  //Set Waktu Awal
-  let startTimeVal = parseFloat(sStart.value);
-  const endTimeVal = parseFloat(sEnd.value);
-  const interval = 0.1; // seconds between samples
-  const skipFactor = 5; // skip this many intervals after a detection
-  const roiW = 120, roiH = 120;
-  const motionThreshold = 30; // threshold for diff
-  const motionRatio = 0.08; // required non-zero ratio in ROI
-
-  // Helper to await seeked once
-  function seekTo(time) {
-    return new Promise(resolve => {
-      const handler = () => {
-        videoPlayer.onseeked = null;
-        resolve();
-      };
-      videoPlayer.onseeked = handler;
-      videoPlayer.currentTime = time;
-    });
-  }
-
-  async function processFrame() {
-    if (!videoPlayer.duration || isNaN(videoPlayer.duration)) {
-      statusEl.innerText = "Video not ready.";
-      document.getElementById('processBtn').disabled = false;
-      gray.delete(); prevGray.delete(); diff.delete();
-      return;
-    }
-
-    if (currentTime >= videoPlayer.duration) {
-      statusEl.innerText = "Scanning Finished!";
-      document.getElementById('processBtn').disabled = false;
-      document.getElementById('btnDownload').style.display = 'block';
-      gray.delete(); prevGray.delete(); diff.delete();
-      return;
-    }
-
-    // Seek and draw
-    //await seekTo(currentTime);
-    videoPlayer.currentTime = startTimeVal;
-    await new Promise(r => { videoPlayer.onseeked = r; });
-    procCtx.drawImage(videoPlayer, 0, 0, procCanvas.width, procCanvas.height);
-
-    let src = cv.imread(procCanvas);
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
-    // If prevGray empty, initialize and advance
-    if (prevGray.empty()) {
-      gray.copyTo(prevGray);
-      src.delete();
-      currentTime += interval;
-      requestAnimationFrame(processFrame);
-      return;
-    }
-
-    // Compute diff and threshold
-    cv.absdiff(gray, prevGray, diff);
-    cv.threshold(diff, diff, motionThreshold, 255, cv.THRESH_BINARY);
-
-    let detected = [];
-    zones.forEach(z => {
-      if (z.locked) return;
-
-      // Centered ROI around calcX,calcY
-      let rx = Math.round(z.calcX - roiW / 2);
-      let ry = Math.round(z.calcY - roiH / 2);
-
-      // Clamp to bounds
-      rx = Math.max(0, Math.min(rx, diff.cols - roiW));
-      ry = Math.max(0, Math.min(ry, diff.rows - roiH));
-
-      if (rx >= 0 && ry >= 0 && (rx + roiW) <= diff.cols && (ry + roiH) <= diff.rows) {
-        let roi = diff.roi(new cv.Rect(rx, ry, roiW, roiH));
-        const nonZero = cv.countNonZero(roi);
-        roi.delete();
-        if (nonZero > (roiW * roiH * motionRatio)) {
-          detected.push({ zone: z, nonZero, rx, ry });
-        }
-      }
-    });
-
-    if (detected.length > 0) {
-      // Choose strongest motion
-      detected.sort((a, b) => b.nonZero - a.nonZero);
-      let target = detected[0].zone;
-      target.locked = true;
-      target.step = currentStep;
-
-      let cell = document.getElementById(`c-${target.id}`);
-      cell.classList.add('detected');
-      cell.innerText = currentStep;
-
-      statusEl.innerText = `Step ${currentStep}: Detected at (${target.calcX},${target.calcY}) -> Will output (${target.fixedX},${target.fixedY})`;
-
-      currentStep++;
-      currentTime += interval * skipFactor; // skip ahead after detection
-    } else {
-      currentTime += interval;
-    }
-
-    // Prepare for next iteration
-    gray.copyTo(prevGray);
-    src.delete();
-    requestAnimationFrame(processFrame);
-  }
-
-  // Start scanning from 0
-  currentTime = sStart.value;
-  processFrame();
-};
-*/
-
 document.getElementById('processBtn').onclick = async () => {
     document.getElementById('processBtn').disabled = true;
     document.getElementById('btnDownload').style.display = 'none';
