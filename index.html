@@ -1,312 +1,362 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Video Pattern Recorder - Margin Precision</title>
-  <style>
-    :root { --primary: #00bcd4; --bg: #f5f6fa; --text: #2f3640; --danger: #e74c3c; --success: #2ecc71; }
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .main-container {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      max-width: 600px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .nav-header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .nav-header h2 { margin: 5px 0; color: #2c3e50; font-size: 1.2rem; }
-    .nav-header a { text-decoration: none; color: #999; font-size: 0.9rem; margin: 0 5px; transition: color 0.2s; }
-    .nav-header a:hover { color: var(--primary); }
-    .nav-header .active { color: var(--primary); font-weight: bold; font-size: 1.1rem; }
-    .preview-wrapper { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 15px; line-height: 0; border: 2px solid #333; }
-    #videoPlayer { width: 100%; display: block; }
-    #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .control-panel { background: #fdfdfd; padding: 15px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 15px; }
-    .slider-row { margin-bottom: 12px; }
-    .slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-    .slider-header label { font-size: 0.8rem; font-weight: bold; color: #636e72; }
-    .val-badge { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-family: monospace; }
-    input[type=range], input[type=number] { width: 100%; accent-color: var(--primary); cursor: pointer; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; color: white; transition: 0.2s; margin-top: 5px; }
-    .btn-start { background: var(--primary); }
-    .btn-start:disabled { background: #bdc3c7; cursor: not-allowed; }
-    .btn-download { background: var(--success); margin-top: 15px; display: none; }
-    .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 20px; width: 100%; }
-    .cell { aspect-ratio: 1; background: #ecf0f1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #bdc3c7; }
-    .cell.detected { background: white; border: 2px solid var(--danger); color: var(--danger); }
-    #status { text-align: center; font-size: 0.9rem; margin: 10px 0; color: #7f8c8d; }
-    #videoInput { margin-bottom: 15px; width: 100%; }
-    input[type="file"]::file-selector-button {
-      background-color: var(--primary); color: white; border: none; padding: 8px 12px;
-      border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: bold;
-    }
-  </style>
-  <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Video Pattern Recorder - Margin Precision</title>
+
+<style>
+:root {
+  --primary: #00bcd4;
+  --bg: #f5f6fa;
+  --text: #2f3640;
+  --danger: #e74c3c;
+  --success: #2ecc71;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.main-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  max-width: 600px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nav-header {
+  text-align: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.nav-header h2 {
+  margin: 5px 0;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.nav-header a {
+  text-decoration: none;
+  color: #999;
+  font-size: 0.9rem;
+  margin: 0 5px;
+}
+
+.nav-header .active {
+  color: var(--primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.preview-wrapper {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 15px;
+  border: 2px solid #333;
+}
+
+#videoPlayer {
+  width: 100%;
+  display: block;
+}
+
+#overlayCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.control-panel {
+  background: #fdfdfd;
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+}
+
+.slider-row {
+  margin-bottom: 12px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.slider-header label {
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.val-badge {
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+
+input[type=range],
+input[type=number] {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  color: white;
+  margin-top: 8px;
+}
+
+.btn-start {
+  background: var(--primary);
+}
+
+.btn-start:disabled {
+  background: #bdc3c7;
+}
+
+.btn-download {
+  background: var(--success);
+  display: none;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  background: #ecf0f1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+#status {
+  text-align: center;
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+</style>
+
+<script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
+
+<script>
+let cvReady = false;
+
+/* ⭐ new line change */
+function onOpenCvReady() {
+  cvReady = true;
+  document.getElementById("status").innerText = "OpenCV ready. Load video.";
+}
+</script>
 </head>
+
 <body>
+
 <div class="main-container">
-  <div class="nav-header">
-    <h2>
-      <a href="flipimage.html">Same Image Flip</a> ||
-      <span class="active">Memory Pattern Recorder V3</span> ||
-      <a href="sudokusolver.html">Sudoku Solver</a>
-    </h2>
-    <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Adjust margins until green boxes match cards</div>
-  </div>
 
-  <input type="file" id="videoInput" accept="video/*">
+<div class="nav-header">
+<h2>
+<a href="flipimage.html">Same Image Flip</a> ||
+<span class="active">Memory Pattern Recorder V3</span> ||
+<a href="sudokusolver.html">Sudoku Solver</a>
+</h2>
+</div>
 
-  <div class="preview-wrapper">
-    <video id="videoPlayer" muted playsinline></video>
-    <canvas id="overlayCanvas"></canvas>
-  </div>
+<input type="file" id="videoInput" accept="video/*">
 
-  <div class="control-panel">
-    <!-- Margin sliders -->
-    <div class="slider-row">
-      <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
-      <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23.0">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
-      <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15.0">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
-      <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5.0">
-    </div>
+<div class="preview-wrapper">
+<video id="videoPlayer" muted playsinline></video>
+<canvas id="overlayCanvas"></canvas>
+</div>
 
-    <!-- Target resolution -->
-    <div class="slider-row">
-      <div class="slider-header"><label>Target Width</label><span class="val-badge" id="targetWidthBadge"></span></div>
-      <input type="number" id="targetWidthInput" min="100" max="5000" step="1">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><label>Target Height</label><span class="val-badge" id="targetHeightBadge"></span></div>
-      <input type="number" id="targetHeightInput" min="100" max="5000" step="1">
-    </div>
+<div class="control-panel">
 
-    <!-- Start/End time -->
-    <div class="slider-row">
-      <div class="slider-header"><label>Start Time (s)</label><span class="val-badge" id="startTimeBadge"></span></div>
-      <input type="number" id="startTimeInput" min="0" step="0.1">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><label>End Time (s)</label><span class="val-badge" id="endTimeBadge"></span></div>
-      <input type="number" id="endTimeInput" min="0" step="0.1">
-    </div>
+<div class="slider-row">
+<div class="slider-header">
+<label>TOP MARGIN (%)</label>
+<span class="val-badge" id="v-t">23%</span>
+</div>
+<input type="range" id="marginTop" min="0" max="100" step="0.1" value="23">
+</div>
 
-    <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
-  </div>
+<div class="slider-row">
+<div class="slider-header">
+<label>BOTTOM MARGIN (%)</label>
+<span class="val-badge" id="v-b">15%</span>
+</div>
+<input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15">
+</div>
 
-  <div id="status">Waiting for OpenCV...</div>
-  <div id="grid" class="results-grid"></div>
-  <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
+<div class="slider-row">
+<div class="slider-header">
+<label>SIDE MARGIN (%)</label>
+<span class="val-badge" id="v-s">5%</span>
+</div>
+<input type="range" id="marginSide" min="0" max="50" step="0.1" value="5">
+</div>
+
+<div class="slider-row">
+<label>Target Width</label>
+<input type="number" id="targetWidthInput">
+</div>
+
+<div class="slider-row">
+<label>Target Height</label>
+<input type="number" id="targetHeightInput">
+</div>
+
+<button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
+
+</div>
+
+<div id="status">Waiting for OpenCV...</div>
+<button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
+
 </div>
 
 <canvas id="procCanvas" style="display:none;"></canvas>
 
 <script>
-let cvReady = false;
+const video = document.getElementById("videoPlayer");
+const overlay = document.getElementById("overlayCanvas");
+const ctx = overlay.getContext("2d");
+const procCanvas = document.getElementById("procCanvas");
+const statusEl = document.getElementById("status");
+
 let zones = [];
-let currentStep = 1;
-const gridEl = document.getElementById('grid');
-for (let i = 0; i < 20; i++) {
-  let d = document.createElement('div');
-  d.className = 'cell';
-  d.id = `c-${i}`;
-  d.innerText = i + 1;
-  gridEl.appendChild(d);
-}
 
-const videoPlayer = document.getElementById('videoPlayer');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const procCanvas = document.getElementById('procCanvas');
-const procCtx = procCanvas.getContext('2d');
-const statusEl = document.getElementById('status');
+function drawOverlay() {
+  if (!overlay.width) return;
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-// Default target resolution dari device
-const targetWidthDef = Math.round(screen.width * window.devicePixelRatio);
-const targetHeightDef = Math.round(screen.height * window.devicePixelRatio);
+  const zonesCalc = getCalculatedZones();
+  ctx.strokeStyle = "#00bcd4";
+  ctx.lineWidth = 2;
 
-// --- Load/Save Target Resolution ---
-function saveTargetResolution() {
-  const width = document.getElementById('targetWidthInput').value;
-  const height = document.getElementById('targetHeightInput').value;
-  localStorage.setItem('targetResolution', JSON.stringify({ width, height }));
-  document.getElementById('targetWidthBadge').innerText = width;
-  document.getElementById('targetHeightBadge').innerText = height;
-}
-
-function loadTargetResolution() {
-  const saved = localStorage.getItem('targetResolution');
-  if (saved) {
-    const { width, height } = JSON.parse(saved);
-    document.getElementById('targetWidthInput').value = width;
-    document.getElementById('targetHeightInput').value = height;
-    document.getElementById('targetWidthBadge').innerText = width;
-    document.getElementById('targetHeightBadge').innerText = height;
-  } else {
-    document.getElementById('targetWidthInput').value = targetWidthDef;
-    document.getElementById('targetHeightInput').value = targetHeightDef;
-    document.getElementById('targetWidthBadge').innerText = targetWidthDef;
-    document.getElementById('targetHeightBadge').innerText = targetHeightDef;
-    localStorage.setItem('targetResolution', JSON.stringify({
-      width: targetWidthDef,
-      height: targetHeightDef
-    }));
-  }
-}
-
-// --- Load/Save Video Range ---
-function saveVideoRange() {
-  const start = document.getElementById('startTimeInput').value;
-  const end = document.getElementById('endTimeInput').value;
-  localStorage.setItem('videoRange', JSON.stringify({ start, end }));
-  document.getElementById('startTimeBadge').innerText = start + "s";
-  document.getElementById('endTimeBadge').innerText = end + "s";
-}
-
-function loadVideoRange() {
-  const saved = localStorage.getItem('videoRange');
-  if (saved) {
-    const { start, end } = JSON.parse(saved);
-    document.getElementById('startTimeInput').value = start;
-    document.getElementById('endTimeInput').value = end;
-    document.getElementById('startTimeBadge').innerText = start + "s";
-    document.getElementById('endTimeBadge').innerText = end + "s";
-  } else {
-    document.getElementById('startTimeInput').value = 0;
-    document.getElementById('endTimeInput').value = 60;
-    document.getElementById('startTimeBadge').innerText = "0s";
-    document.getElementById('endTimeBadge').innerText = "60s";
-  }
-}
-
-// --- Event listeners ---
-['marginTop','marginBottom','marginSide'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', e=>{
-    const badgeId = id==='marginTop'?'v-t':(id==='marginBottom'?'v-b':'v-s');
-    document.getElementById(badgeId).innerText = parseFloat(e.target.value).toFixed(1)+"%";
-    drawOverlay();
+  zonesCalc.forEach(z => {
+    ctx.strokeRect(z.x, z.y, z.w, z.h);
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(z.x + z.w/2, z.y + z.h/2, 5, 0, Math.PI * 2);
+    ctx.fill();
   });
-});
-['targetWidthInput','targetHeightInput'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', ()=>{
-    saveTargetResolution();
-    drawOverlay();
-  });
-});
-['startTimeInput','endTimeInput'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', saveVideoRange);
-});
+}
 
-window.addEventListener('load', ()=>{
-  loadTargetResolution();
-  loadVideoRange();
-});
-
-// --- Grid calculation synced with target resolution ---
 function getCalculatedZones() {
-  if (overlayCanvas.width === 0) return [];
-  const w = overlayCanvas.width;
-  const h = overlayCanvas.height;
-  const tPct = parseFloat(document.getElementById('marginTop').value)/100;
-  const bPct = parseFloat(document.getElementById('marginBottom').value)/100;
-  const sPct = parseFloat(document.getElementById('marginSide').value)/100;
-  const startX = w*sPct, endX = w*(1-sPct);
-  const startY = h*tPct, endY = h*(1-bPct);
-  const gridW = endX-startX, gridH = endY-startY;
-  const cols=4, rows=5;
-  const cellW=gridW/cols, cellH=gridH/rows;
-  const targetWidth=parseInt(document.getElementById('targetWidthInput').value);
-  const targetHeight=parseInt(document.getElementById('targetHeightInput').value);
-  let zones=[];
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      const zx=startX+(c*cellW), zy=startY+(r*cellH);
-      const relX=(zx+cellW/2)/w, relY=(zy+cellH/2)/h;
-      const cxTarget=Math.round(relX*targetWidth);
-      const cyTarget=Math.round(relY*targetHeight);
-      zones.push({x:zx,y:zy,w:cellW,h:cellH,relX,relY,cxTarget,cyTarget});
+  const w = overlay.width;
+  const h = overlay.height;
+
+  const t = marginTop.value / 100;
+  const b = marginBottom.value / 100;
+  const s = marginSide.value / 100;
+
+  const startX = w * s;
+  const endX = w * (1 - s);
+  const startY = h * t;
+  const endY = h * (1 - b);
+
+  const gridW = endX - startX;
+  const gridH = endY - startY;
+
+  const cols = 4;
+  const rows = 5;
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
+
+  const targetW = parseInt(targetWidthInput.value);
+  const targetH = parseInt(targetHeightInput.value);
+
+  let out = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = startX + c * cellW;
+      const y = startY + r * cellH;
+      const relX = (x + cellW / 2) / w;
+      const relY = (y + cellH / 2) / h;
+
+      out.push({
+        x, y, w: cellW, h: cellH,
+        cxTarget: Math.round(relX * targetW),
+        cyTarget: Math.round(relY * targetH)
+      });
     }
   }
-  return zones;
+  return out;
 }
 
-function drawOverlay(){
-  if(overlayCanvas.width===0) return;
-  overlayCtx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
-  const zones=getCalculatedZones();
-  overlayCtx.strokeStyle="#00bcd4"; overlayCtx.lineWidth=2;
-  zones.forEach(z=>{
-    overlayCtx.strokeRect(z.x,z.y,z.w,z.h);
-    overlayCtx.fillStyle="#ff0000";
-    overlayCtx.beginPath();
-    overlayCtx.arc(z.x+z.w/2,z.y+z.h/2,6,0,Math.PI*2);
-    overlayCtx.fill();
-    overlayCtx.fillStyle="#fff"; overlayCtx.font="12px Arial";
-    overlayCtx.fillText(`${z.cxTarget},${z.cyTarget}`,z.x+5,z.y+15);
-  });
-}
+videoInput.onchange = e => {
+  if (!cvReady) return;
 
-// --- Video load ---
-document.getElementById('videoInput').addEventListener('change', e=>{
-  if(e.target.files[0]){
-    videoPlayer.src=URL.createObjectURL(e.target.files[0]);
-    videoPlayer.onloadedmetadata=()=>{
-      overlayCanvas.width=videoPlayer.videoWidth;
-      overlayCanvas.height=videoPlayer.videoHeight;
-      procCanvas.width=videoPlayer.videoWidth;
-      procCanvas.height=videoPlayer.videoHeight;
-      drawOverlay();
-      document.getElementById('processBtn').disabled=false;
-      statusEl.innerText="Video loaded. Adjust margins if needed, then click START SCANNING.";
-    };
-  }
-});
-
-// --- Scanning logic (simplified demo) ---
-document.getElementById('processBtn').onclick=()=>{
-  const calcZones=getCalculatedZones();
-  zones=calcZones.map((z,i)=>({id:i,cxTarget:z.cxTarget,cyTarget:z.cyTarget,locked:true,step:i+1}));
-  statusEl.innerText="Scanning Finished!";
-  document.getElementById('btnDownload').style.display='block';
+  video.src = URL.createObjectURL(e.target.files[0]);
+  video.onloadedmetadata = () => {
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+    procCanvas.width = video.videoWidth;
+    procCanvas.height = video.videoHeight;
+    drawOverlay();
+    processBtn.disabled = false;
+    statusEl.innerText = "Video ready. Click START.";
+  };
 };
 
-// --- Download JSON ---
-document.getElementById('btnDownload').onclick=()=>{
-  const steps=zones.filter(z=>z.locked).sort((a,b)=>a.step-b.step);
-  const actionList=steps.map(s=>({
-    "data":`${s.cxTarget},${s.cyTarget}`,
-    "extras":[
-      {"data":String(s.step),"id":"extra_coordinate_description"},
-      {"data":120,"id":"extra_delay_before_next_action"}
-    ],
-    "flags":0,"type":"TAP_COORDINATE","uid":crypto.randomUUID()
+processBtn.onclick = () => {
+  if (!cvReady) return;
+
+  zones = getCalculatedZones().map((z, i) => ({
+    step: i + 1,
+    x: z.cxTarget,
+    y: z.cyTarget
   }));
-  const keymapData={"keymap_list":[{"actionList":actionList}]};
-  const blob=new Blob([JSON.stringify(keymapData,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url;
-  const timestamp=new Date().toISOString().replace(/T/,'_').replace(/\..+/,'').replace(/:/g,'');
-  a.download=`Pattern_Result_${timestamp}.json`;
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+
+  btnDownload.style.display = "block";
+  statusEl.innerText = "Scanning finished.";
+};
+
+btnDownload.onclick = () => {
+  const actionList = zones.map(z => ({
+    type: "TAP_COORDINATE",
+    data: `${z.x},${z.y}`,
+    uid: crypto.randomUUID()
+  }));
+
+  const blob = new Blob([JSON.stringify({ actionList }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "pattern.json";
+  a.click();
 };
 </script>
+
 </body>
 </html>
