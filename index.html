@@ -260,6 +260,13 @@
         </div>
         <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*JSON akan dikonversi otomatis dari basis 1260x2800 ke resolusi ini.</p>
     </div>
+    <div class="slider-section">
+        <span class="slider-title">Custom Tap Coordinates (X, Y per baris)</span>
+        <textarea id="customCoords" rows="8" style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="170,845
+    480,845
+    ..."></textarea>
+        <p style="font-size: 0.65rem; color: #e74c3c; margin-top: 5px;">*Masukkan 20 baris koordinat sesuai urutan grid (Kiri ke Kanan, Atas ke Bawah).</p>
+    </div>
 
     <div id="status">Waiting for OpenCV...</div>
     <div id="grid" class="results-grid"></div>
@@ -305,6 +312,35 @@ const FIXED_CENTERS = [
   [170, 1745], [480, 1745], [790, 1745], [1100, 1745],
   [170, 2045], [480, 2045], [790, 2045], [1100, 2045]
 ];
+const DEFAULT_COORDS_TEXT = `170,845
+480,845
+790,845
+1100,845
+170,1145
+480,1145
+790,1145
+1100,1145
+170,1445
+480,1445
+790,1445
+1100,1445
+170,1745
+480,1745
+790,1745
+1100,1745
+170,2045
+480,2045
+790,2045
+1100,2045`;
+
+function getCoordsFromInput() {
+    const text = document.getElementById('customCoords').value.trim();
+    if (!text) return [];
+    return text.split('\n').map(line => {
+        const parts = line.split(',');
+        return [parseInt(parts[0]) || 0, parseInt(parts[1]) || 0];
+    });
+}
 
 // --- LOCAL STORAGE & INIT ---
 window.addEventListener('load', () => {
@@ -321,8 +357,9 @@ function saveSliderSettings() {
         top: document.getElementById('marginTop').value,
         bottom: document.getElementById('marginBottom').value,
         side: document.getElementById('marginSide').value,
-        resW: document.getElementById('screenWidth').value, // Simpan Width
-        resH: document.getElementById('screenHeight').value // Simpan Height
+        resW: document.getElementById('screenWidth').value,
+        resH: document.getElementById('screenHeight').value,
+        coords: document.getElementById('customCoords').value
     };
     localStorage.setItem('patternRecorderMargins', JSON.stringify(settings));
 }
@@ -331,22 +368,21 @@ function loadSliderSettings() {
     const saved = localStorage.getItem('patternRecorderMargins');
     if (saved) {
         const settings = JSON.parse(saved);
-        if (settings.top) {
-            document.getElementById('marginTop').value = settings.top;
-            document.getElementById('v-t').innerText = parseFloat(settings.top).toFixed(1) + "%";
-        }
-        if (settings.bottom) {
-            document.getElementById('marginBottom').value = settings.bottom;
-            document.getElementById('v-b').innerText = parseFloat(settings.bottom).toFixed(1) + "%";
-        }
-        if (settings.side) {
-            document.getElementById('marginSide').value = settings.side;
-            document.getElementById('v-s').innerText = parseFloat(settings.side).toFixed(1) + "%";
-        }
-        // Load Resolusi
+        if (settings.top) document.getElementById('marginTop').value = settings.top;
+        if (settings.bottom) document.getElementById('marginBottom').value = settings.bottom;
+        if (settings.side) document.getElementById('marginSide').value = settings.side;
         if (settings.resW) document.getElementById('screenWidth').value = settings.resW;
         if (settings.resH) document.getElementById('screenHeight').value = settings.resH;
+        
+        // Load Koordinat, jika tidak ada pakai default
+        document.getElementById('customCoords').value = settings.coords || DEFAULT_COORDS_TEXT;
+    } else {
+        document.getElementById('customCoords').value = DEFAULT_COORDS_TEXT;
     }
+    // Update label persen
+    document.getElementById('v-t').innerText = document.getElementById('marginTop').value + "%";
+    document.getElementById('v-b').innerText = document.getElementById('marginBottom').value + "%";
+    document.getElementById('v-s').innerText = document.getElementById('marginSide').value + "%";
 }
 
 // Sliders listener
@@ -387,53 +423,56 @@ document.getElementById('videoInput').addEventListener('change', (e) => {
   }
 });
 
+document.getElementById('customCoords').addEventListener('input', () => {
+    saveSliderSettings();
+    drawOverlay();
+});
+
 //LOGIKA GRID & OVERLAY
 function getCalculatedZones() {
-  if (overlayCanvas.width === 0) return [];
+    if (overlayCanvas.width === 0) return [];
 
-  const w = overlayCanvas.width;
-  const h = overlayCanvas.height;
+    const w = overlayCanvas.width;
+    const h = overlayCanvas.height;
+    const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
+    const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
+    const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
 
-  const tPct = parseFloat(document.getElementById('marginTop').value) / 100;
-  const bPct = parseFloat(document.getElementById('marginBottom').value) / 100;
-  const sPct = parseFloat(document.getElementById('marginSide').value) / 100;
+    const startX = w * sPct;
+    const endX = w * (1 - sPct);
+    const startY = h * tPct;
+    const endY = h * (1 - bPct);
 
-  const startX = w * sPct;
-  const endX = w * (1 - sPct);
-  const startY = h * tPct;
-  const endY = h * (1 - bPct);
+    const cellW = (endX - startX) / 4;
+    const cellH = (endY - startY) / 5;
 
-  const gridW = endX - startX;
-  const gridH = endY - startY;
+    // Ambil koordinat custom dari textarea
+    const userCoords = getCoordsFromInput();
 
-  const cols = 4, rows = 5;
-  const cellW = gridW / cols;
-  const cellH = gridH / rows;
+    let calculatedZones = [];
+    for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 4; c++) {
+            const idx = (r * 4) + c;
+            const zx = startX + (c * cellW);
+            const zy = startY + (r * cellH);
+            
+            // Ambil koordinat dari array custom (jika index tidak ada, default ke 0,0)
+            const fx = userCoords[idx] ? userCoords[idx][0] : 0;
+            const fy = userCoords[idx] ? userCoords[idx][1] : 0;
 
-  let calculatedZones = [];
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const zx = startX + (c * cellW);
-      const zy = startY + (r * cellH);
-
-      // Use geometric center of each cell
-      const cx = Math.round(zx + cellW / 2);
-      const cy = Math.round(zy + cellH / 2);
-
-      calculatedZones.push({
-        x: Math.round(zx),
-        y: Math.round(zy),
-        w: Math.round(cellW),
-        h: Math.round(cellH),
-        cx: cx,
-        cy: cy,
-        fixedX: FIXED_CENTERS[r * cols + c][0],
-        fixedY: FIXED_CENTERS[r * cols + c][1]
-      });
+            calculatedZones.push({
+                x: Math.round(zx),
+                y: Math.round(zy),
+                w: Math.round(cellW),
+                h: Math.round(cellH),
+                cx: Math.round(zx + cellW / 2),
+                cy: Math.round(zy + cellH / 2),
+                fixedX: fx,
+                fixedY: fy
+            });
+        }
     }
-  }
-  return calculatedZones;
+    return calculatedZones;
 }
 
 function drawOverlay() {
@@ -771,8 +810,10 @@ document.getElementById('btnDownload').onclick = () => {
     const targetH = parseFloat(document.getElementById('screenHeight').value) || 2800;
 
     // Hitung Rasio (Base adalah 1260x2800)
-    const ratioX = targetW / 1260;
-    const ratioY = targetH / 2800;
+    //const ratioX = targetW / 1260;
+    //const ratioY = targetH / 2800;
+    const ratioX = 1;
+    const ratioY = 1;
 
     const actionList = steps.map(s => {
         // Kalkulasi koordinat baru berdasarkan resolusi target
