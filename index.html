@@ -1052,13 +1052,13 @@ function drawOverlay() {
 sStart.addEventListener('input', () => {
     if(parseFloat(sStart.value) > parseFloat(sEnd.value)) sStart.value = sEnd.value;
     document.getElementById("vStart").innerText = parseFloat(sStart.value).toFixed(1) + "s";
-    video.currentTime = sStart.value; // Preview frame
+    videoPlayer.currentTime = sStart.value; // Preview frame
 });
 
 sEnd.addEventListener('input', () => {
     if(parseFloat(sEnd.value) < parseFloat(sStart.value)) sEnd.value = sStart.value;
     document.getElementById("vEnd").innerText = parseFloat(sEnd.value).toFixed(1) + "s";
-    video.currentTime = sEnd.value; // Preview frame
+    videoPlayer.currentTime = sEnd.value; // Preview frame
 });
 
 //PROSES SCANNING
