@@ -960,10 +960,10 @@ document.getElementById('videoInput').addEventListener('change', (e) => {
         procCanvas.height = videoPlayer.videoHeight;
 
         // Setup Slider Waktu
-        sStart.max = video.duration;
-        sEnd.max = video.duration;
-        sEnd.value = video.duration;
-        document.getElementById('vEnd').innerText = video.duration.toFixed(1) + "s";
+        sStart.max = videoPlayer.duration;
+        sEnd.max = videoPlayer.duration;
+        sEnd.value = videoPlayer.duration;
+        document.getElementById('vEnd').innerText = videoPlayer.duration.toFixed(1) + "s";
         
         // Also set CSS size to match displayed video if needed
         overlayCanvas.style.width = videoPlayer.clientWidth + 'px';
