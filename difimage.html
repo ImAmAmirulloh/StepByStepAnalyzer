@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precision Diff - Layout Optimized</title>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --panel-bg: #2d2d2d;
+            --accent-a: #00ff00;
+            --accent-b: #00ccff;
+            --text: #eee;
+        }
+
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; overflow-x: hidden; }
+
+        /* Layout Utama: 2 Kolom */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px; /* Workspace lebar, Sisi Kanan 400px */
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* --- BAGIAN A: WORKSPACE --- */
+        .workspace-container {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+
+        .workspace {
+            position: relative;
+            border: 2px solid #555;
+            background: #000;
+            overflow: auto;
+            max-height: 80vh;
+        }
+
+        #main-img { display: block; }
+
+        /* Selection Boxes */
+        .box { position: absolute; box-sizing: border-box; cursor: move; border-width: 2px; border-style: solid; }
+        #box-1 { border-color: var(--accent-a); z-index: 10; background: rgba(0, 255, 0, 0.05); }
+        #box-2 { border-color: var(--accent-b); z-index: 11; background: rgba(0, 204, 255, 0.05); }
+        .resizer { width: 14px; height: 14px; background: var(--accent-a); position: absolute; right: -7px; bottom: -7px; cursor: nwse-resize; border-radius: 50%; }
+        .label-box { position: absolute; top: -22px; left: -2px; padding: 2px 6px; font-size: 10px; font-weight: bold; color: #000; border-radius: 3px 3px 0 0; }
+
+        /* --- SISI KANAN (B & C) --- */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* BAGIAN B: NUDGE ARROWS */
+        .nudge-panel {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            width: 150px;
+            margin: 10px auto;
+        }
+
+        .d-pad button {
+            height: 40px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .d-pad button:hover { background: #666; }
+
+        /* BAGIAN C: PREVIEW & RESULT */
+        .preview-panel {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            flex-grow: 1;
+        }
+
+        canvas {
+            background: #000;
+            border: 1px solid #555;
+            width: 100%; /* Fit ke panel kanan */
+            height: auto;
+            margin-bottom: 15px;
+        }
+
+        .resizer {
+    width: 40px;
+    height: 50px;
+    background: var(--accent-a);
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    cursor: nwse-resize;
+    border-radius: 50%;
+}
+
+
+
+        /* Controls */
+        .btn-logic { background: #673ab7; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; }
+        .btn-primary { background: #ff5722; color: white; border: none; padding: 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
+        
+        h4 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; color: #aaa; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="index2.html">versi manual dua upload</a>
+        <h2>Image Different ||
+            <a href="index.html">Memory Pattern Recorder V3</a> || 
+            <a href="sudokusolver.html">Sudoku Solver</a>
+            <a href="flipimage.html">Same Image Flip</a>
+        </h2>
+        <input type="file" id="upload-input" accept="image/*">
+    </div>
+
+    <div class="main-layout">
+        
+        <div class="workspace-container">
+            <h4>Workspace (A)</h4>
+            <div class="workspace" id="workspace">
+                <img id="main-img">
+                <div id="box-1" class="box" style="display:none;">
+                    <div class="label-box" style="background: var(--accent-a);">MASTER BORDER 1</div>
+                    <div class="resizer" id="resizer"></div>
+                </div>
+                <div id="box-2" class="box" style="display:none;">
+                    <div class="label-box" style="background: var(--accent-b);">NUDGE BORDER 2</div>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: #888; margin-top: 10px;">* Drag kotak hijau untuk posisi, tarik titik dipojok untuk resize.</p>
+        </div>
+
+        <div class="side-panel">
+            
+            <div class="nudge-panel">
+                <h4>Positioning (B)</h4>
+                <button class="btn-logic" onclick="syncBox('Y')">Snap Y-Next (Samping Kanan)</button>
+                <button class="btn-logic" onclick="syncBox('X')">Snap X-Next (Bawah)</button>
+                
+                <div style="text-align: center; margin-top: 15px;">
+                    <span style="font-size: 12px;">Micro Nudge Border 2:</span>
+                    <div class="d-pad">
+                        <div></div><button onclick="nudge(0,-1)">▲</button><div></div>
+                        <button onclick="nudge(-1,0)">◀</button>
+                        <button onclick="nudge(0,1)">▼</button>
+                        <button onclick="nudge(1,0)">▶</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-panel">
+                <h4>Preview & Result (C)</h4>
+                <div style="font-size: 11px; margin-bottom: 5px;">Live Alignment:</div>
+                <canvas id="prev-canvas"></canvas>
+                
+                <div style="font-size: 11px; margin-bottom: 5px;">Difference Output:</div>
+                <canvas id="res-canvas"></canvas>
+
+                <button class="btn-primary" onclick="processDiff()">⚡ EXECUTE DIFF</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const img = document.getElementById('main-img');
+    const box1 = document.getElementById('box-1');
+    const box2 = document.getElementById('box-2');
+    const resizer = document.getElementById('resizer');
+    const prevCanvas = document.getElementById('prev-canvas');
+    const resCanvas = document.getElementById('res-canvas');
+
+    let state = {
+        x1: 20, y1: 20, w: 200, h: 200,
+        x2: 230, y2: 20,
+        isDragging: false, isResizing: false, activeBox: null,
+        startX: 0, startY: 0
+    };
+
+    // --- 1. UPLOAD IMAGE ---
+    document.getElementById('upload-input').onchange = (e) => {
+        if(e.target.files && e.target.files[0]){
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                img.src = ev.target.result;
+                img.onload = () => {
+                    box1.style.display = 'block';
+                    box2.style.display = 'block';
+                    updateVisuals();
+                };
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    // --- 2. LOGIC SNAP & NUDGE ---
+    function syncBox(mode) {
+        if (mode === 'Y') { 
+            state.y2 = state.y1;
+            state.x2 = state.x1 + state.w;
+        } else if (mode === 'X') { 
+            state.x2 = state.x1;
+            state.y2 = state.y1 + state.h;
+        }
+        updateVisuals();
+    }
+
+    function nudge(dx, dy) {
+        state.x2 += dx; state.y2 += dy;
+        updateVisuals();
+    }
+
+    // --- 3. UNIFIED INPUT HANDLING (MOUSE & TOUCH) ---
+    
+    // Helper untuk mengambil koordinat X/Y baik dari Mouse maupun Touch
+    function getClientPos(e) {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+
+    // A. Handle START (MouseDown / TouchStart)
+    function handleStart(e) {
+        const target = e.target;
+        
+        // Cek apakah yang disentuh adalah elemen interaktif kita
+        if (target === resizer || target === box1 || target === box2) {
+            // Mencegah scroll layar saat menyentuh box
+            if(e.type === 'touchstart') e.preventDefault(); 
+            
+            const pos = getClientPos(e);
+            state.startX = pos.x;
+            state.startY = pos.y;
+
+            if (target === resizer) {
+                state.isResizing = true;
+            } else {
+                state.isDragging = true;
+                state.activeBox = target;
+            }
+        }
+    }
+
+    // B. Handle MOVE (MouseMove / TouchMove)
+    function handleMove(e) {
+        if (!state.isDragging && !state.isResizing) return;
+
+        // Mencegah scroll layar saat sedang drag/resize
+        if(e.type === 'touchmove') e.preventDefault(); 
+
+        const pos = getClientPos(e);
+        const dx = pos.x - state.startX;
+        const dy = pos.y - state.startY;
+
+        if (state.isResizing) {
+            // Minimal ukuran 20px agar tidak hilang
+            state.w = Math.max(20, state.w + dx);
+            state.h = Math.max(20, state.h + dy);
+        } else if (state.isDragging) {
+            if (state.activeBox === box1) {
+                state.x1 += dx; state.y1 += dy;
+            } else {
+                state.x2 += dx; state.y2 += dy;
+            }
+        }
+
+        // Update posisi awal untuk frame selanjutnya
+        state.startX = pos.x;
+        state.startY = pos.y;
+        
+        updateVisuals();
+    }
+
+    // C. Handle END (MouseUp / TouchEnd)
+    function handleEnd() {
+        state.isDragging = false;
+        state.isResizing = false;
+        state.activeBox = null;
+    }
+
+    // --- 4. EVENT LISTENERS ---
+    
+    // Mouse Events
+    window.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+
+    // Touch Events (Passive: false penting agar preventDefault bekerja)
+    window.addEventListener('touchstart', handleStart, { passive: false });
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+
+
+    // --- 5. RENDER LOGIC ---
+    function updateVisuals() {
+        // Terapkan state ke DOM
+        box1.style.width = state.w + 'px'; 
+        box1.style.height = state.h + 'px';
+        box1.style.left = state.x1 + 'px'; 
+        box1.style.top = state.y1 + 'px';
+
+        box2.style.width = state.w + 'px'; 
+        box2.style.height = state.h + 'px';
+        box2.style.left = state.x2 + 'px'; 
+        box2.style.top = state.y2 + 'px';
+
+        drawPreview();
+    }
+
+    function drawPreview() {
+        if (!img.src) return;
+        
+        // Pastikan ukuran canvas sesuai box
+        prevCanvas.width = state.w; 
+        prevCanvas.height = state.h;
+        
+        const ctx = prevCanvas.getContext('2d');
+        
+        // Gambar Box 1 (Solid)
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(img, state.x1, state.y1, state.w, state.h, 0, 0, state.w, state.h);
+        
+        // Gambar Box 2 (Transparan 50%)
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(img, state.x2, state.y2, state.w, state.h, 0, 0, state.w, state.h);
+    }
+
+    function processDiff() {
+        if (!img.src) return;
+
+        resCanvas.width = state.w; 
+        resCanvas.height = state.h;
+        const ctx = resCanvas.getContext('2d');
+        
+        // Canvas sementara untuk mengambil data pixel mentah
+        const temp = document.createElement('canvas');
+        temp.width = img.width; 
+        temp.height = img.height;
+        const tCtx = temp.getContext('2d');
+        tCtx.drawImage(img, 0, 0);
+
+        // Ambil pixel data
+        const d1 = tCtx.getImageData(state.x1, state.y1, state.w, state.h).data;
+        const d2 = tCtx.getImageData(state.x2, state.y2, state.w, state.h).data;
+        const out = ctx.createImageData(state.w, state.h);
+
+        // Loop Pixel Comparison
+        for (let i = 0; i < d1.length; i += 4) {
+            const diff = Math.abs(d1[i]-d2[i]) + Math.abs(d1[i+1]-d2[i+1]) + Math.abs(d1[i+2]-d2[i+2]);
+            if (diff > 45) { // Threshold sensitivitas
+                out.data[i]=255;   // R
+                out.data[i+1]=0;   // G
+                out.data[i+2]=0;   // B
+                out.data[i+3]=255; // Alpha
+            } else {
+                // Tampilkan gambar asli agak gelap jika sama
+                out.data[i]=d1[i]; 
+                out.data[i+1]=d1[i+1]; 
+                out.data[i+2]=d1[i+2]; 
+                out.data[i+3]=255;
+            }
+        }
+        ctx.putImageData(out, 0, 0);
+    }
+    </script>
+</body>
+</html>
+
+
