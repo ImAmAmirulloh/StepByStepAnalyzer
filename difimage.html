@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Precision Diff - Layout Optimized</title>
+    <title>Precision Diff - with Accuracy Score</title>
     <style>
         :root {
             --bg: #1a1a1a;
@@ -11,6 +11,9 @@
             --accent-a: #00ff00;
             --accent-b: #00ccff;
             --text: #eee;
+            --score-good: #00ff00;
+            --score-ok: #00ccff;
+            --score-bad: #ff5722;
         }
 
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; overflow-x: hidden; }
@@ -18,7 +21,7 @@
         /* Layout Utama: 2 Kolom */
         .main-layout {
             display: grid;
-            grid-template-columns: 1fr 400px; /* Workspace lebar, Sisi Kanan 400px */
+            grid-template-columns: 1fr 400px;
             gap: 20px;
             max-width: 1400px;
             margin: 0 auto;
@@ -37,7 +40,8 @@
             border: 2px solid #555;
             background: #000;
             overflow: auto;
-            max-height: 80vh;
+            /* max-height: 80vh; Removed to allow full height scroll if needed */
+             min-height: 400px; /* Ensure minimum height */
         }
 
         #main-img { display: block; }
@@ -46,79 +50,39 @@
         .box { position: absolute; box-sizing: border-box; cursor: move; border-width: 2px; border-style: solid; }
         #box-1 { border-color: var(--accent-a); z-index: 10; background: rgba(0, 255, 0, 0.05); }
         #box-2 { border-color: var(--accent-b); z-index: 11; background: rgba(0, 204, 255, 0.05); }
-        .resizer { width: 14px; height: 14px; background: var(--accent-a); position: absolute; right: -7px; bottom: -7px; cursor: nwse-resize; border-radius: 50%; }
-        .label-box { position: absolute; top: -22px; left: -2px; padding: 2px 6px; font-size: 10px; font-weight: bold; color: #000; border-radius: 3px 3px 0 0; }
+        
+        /* Resizer yang lebih besar agar mudah disentuh */
+        .resizer {
+            width: 30px; height: 30px;
+            background: var(--accent-a); opacity: 0.7;
+            position: absolute; right: -15px; bottom: -15px;
+            cursor: nwse-resize; border-radius: 50%;
+        }
+        .label-box { position: absolute; top: -22px; left: -2px; padding: 2px 6px; font-size: 10px; font-weight: bold; color: #000; border-radius: 3px 3px 0 0; white-space: nowrap;}
 
         /* --- SISI KANAN (B & C) --- */
-        .side-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
 
         /* BAGIAN B: NUDGE ARROWS */
-        .nudge-panel {
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #444;
-        }
-
-        .d-pad {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 5px;
-            width: 150px;
-            margin: 10px auto;
-        }
-
-        .d-pad button {
-            height: 40px;
-            background: #444;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 18px;
-        }
-
+        .nudge-panel { background: var(--panel-bg); padding: 20px; border-radius: 8px; border: 1px solid #444; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 150px; margin: 10px auto; }
+        .d-pad button { height: 40px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; }
         .d-pad button:hover { background: #666; }
 
         /* BAGIAN C: PREVIEW & RESULT */
-        .preview-panel {
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            flex-grow: 1;
-        }
+        .preview-panel { background: var(--panel-bg); padding: 20px; border-radius: 8px; border: 1px solid #444; flex-grow: 1; }
+        canvas { background: #000; border: 1px solid #555; width: 100%; height: auto; margin-bottom: 15px; }
 
-        canvas {
-            background: #000;
-            border: 1px solid #555;
-            width: 100%; /* Fit ke panel kanan */
-            height: auto;
-            margin-bottom: 15px;
-        }
-
-        .resizer {
-    width: 40px;
-    height: 50px;
-    background: var(--accent-a);
-    position: absolute;
-    right: -7px;
-    bottom: -7px;
-    cursor: nwse-resize;
-    border-radius: 50%;
-}
-
-
+        /* Style untuk Skor Akurasi Baru */
+        .score-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-size: 11px; }
+        #accuracy-score { font-weight: bold; font-size: 14px; color: var(--score-bad); transition: color 0.3s; }
 
         /* Controls */
         .btn-logic { background: #673ab7; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 10px; }
         .btn-primary { background: #ff5722; color: white; border: none; padding: 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
         
         h4 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; color: #aaa; letter-spacing: 1px; }
+        a { color: var(--accent-b); text-decoration: none; margin: 0 5px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -170,7 +134,11 @@
 
             <div class="preview-panel">
                 <h4>Preview & Result (C)</h4>
-                <div style="font-size: 11px; margin-bottom: 5px;">Live Alignment:</div>
+                
+                <div class="score-container">
+                    <span>Live Alignment Preview:</span>
+                    <div>Diff Score: <span id="accuracy-score">0.00</span> (Lower is better)</div>
+                </div>
                 <canvas id="prev-canvas"></canvas>
                 
                 <div style="font-size: 11px; margin-bottom: 5px;">Difference Output:</div>
@@ -183,12 +151,15 @@
     </div>
 
     <script>
+        /*
         const img = document.getElementById('main-img');
-    const box1 = document.getElementById('box-1');
+        const box1 = document.getElementById('box-1');
     const box2 = document.getElementById('box-2');
     const resizer = document.getElementById('resizer');
     const prevCanvas = document.getElementById('prev-canvas');
     const resCanvas = document.getElementById('res-canvas');
+    // Element baru untuk skor
+    const accuracyScoreSpan = document.getElementById('accuracy-score');
 
     let state = {
         x1: 20, y1: 20, w: 200, h: 200,
@@ -196,7 +167,7 @@
         isDragging: false, isResizing: false, activeBox: null,
         startX: 0, startY: 0
     };
-
+    
     // --- 1. UPLOAD IMAGE ---
     document.getElementById('upload-input').onchange = (e) => {
         if(e.target.files && e.target.files[0]){
@@ -204,6 +175,12 @@
             reader.onload = (ev) => {
                 img.src = ev.target.result;
                 img.onload = () => {
+                    // Reset state saat upload baru
+                    state.w = Math.min(200, img.width/3);
+                    state.h = Math.min(200, img.height/3);
+                    state.x1 = 20; state.y1 = 20;
+                    state.x2 = state.x1 + state.w + 20; state.y2 = 20;
+                    
                     box1.style.display = 'block';
                     box2.style.display = 'block';
                     updateVisuals();
@@ -212,7 +189,7 @@
             reader.readAsDataURL(e.target.files[0]);
         }
     };
-
+    
     // --- 2. LOGIC SNAP & NUDGE ---
     function syncBox(mode) {
         if (mode === 'Y') { 
@@ -224,15 +201,259 @@
         }
         updateVisuals();
     }
-
+    
     function nudge(dx, dy) {
         state.x2 += dx; state.y2 += dy;
         updateVisuals();
     }
-
-    // --- 3. UNIFIED INPUT HANDLING (MOUSE & TOUCH) ---
     
-    // Helper untuk mengambil koordinat X/Y baik dari Mouse maupun Touch
+    // --- 3. UNIFIED INPUT HANDLING (MOUSE & TOUCH) ---
+    function getClientPos(e) {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+    
+    function handleStart(e) {
+        const target = e.target;
+        if (target === resizer || target === box1 || target === box2) {
+            if(e.type === 'touchstart') e.preventDefault(); 
+            const pos = getClientPos(e);
+            state.startX = pos.x;
+            state.startY = pos.y;
+            
+            if (target === resizer) {
+                state.isResizing = true;
+            } else {
+                state.isDragging = true;
+                state.activeBox = target;
+            }
+        }
+    }
+    
+    function handleMove(e) {
+        if (!state.isDragging && !state.isResizing) return;
+        if(e.type === 'touchmove') e.preventDefault(); 
+        
+        const pos = getClientPos(e);
+        const dx = pos.x - state.startX;
+        const dy = pos.y - state.startY;
+        
+        if (state.isResizing) {
+            state.w = Math.max(20, state.w + dx);
+            state.h = Math.max(20, state.h + dy);
+        } else if (state.isDragging) {
+            if (state.activeBox === box1) {
+                state.x1 += dx; state.y1 += dy;
+            } else {
+                state.x2 += dx; state.y2 += dy;
+            }
+        }
+        state.startX = pos.x;
+        state.startY = pos.y;
+        updateVisuals();
+    }
+    
+    function handleEnd() {
+        state.isDragging = false;
+        state.isResizing = false;
+        state.activeBox = null;
+    }
+    
+    // --- 4. EVENT LISTENERS ---
+    window.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchstart', handleStart, { passive: false });
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    
+    
+    // --- 5. RENDER LOGIC ---
+    function updateVisuals() {
+        box1.style.width = state.w + 'px'; 
+        box1.style.height = state.h + 'px';
+        box1.style.left = state.x1 + 'px'; 
+        box1.style.top = state.y1 + 'px';
+        
+        box2.style.width = state.w + 'px'; 
+        box2.style.height = state.h + 'px';
+        box2.style.left = state.x2 + 'px'; 
+        box2.style.top = state.y2 + 'px';
+        
+        // drawPreview akan dipanggil setiap kali ada pergerakan
+        drawPreview();
+    }
+    
+    function drawPreview() {
+        if (!img.src || state.w <= 0 || state.h <= 0) return;
+        
+        // A. Render Visual Overlay
+        prevCanvas.width = state.w; 
+        prevCanvas.height = state.h;
+        const ctx = prevCanvas.getContext('2d');
+        
+        // Gambar Box 1 (Solid)
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(img, state.x1, state.y1, state.w, state.h, 0, 0, state.w, state.h);
+        
+        // Gambar Box 2 (Transparan 50%) untuk efek tumpuk
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(img, state.x2, state.y2, state.w, state.h, 0, 0, state.w, state.h);
+        
+        // B. --- HITUNG SKOR AKURASI REAL-TIME ---
+        // Kita perlu mengambil data pixel mentah, mirip dengan processDiff
+        const temp = document.createElement('canvas');
+        temp.width = img.width; temp.height = img.height;
+        const tCtx = temp.getContext('2d');
+        tCtx.drawImage(img, 0, 0);
+        
+        // Ambil data pixel area 1 dan 2
+        // Menggunakan Math.round untuk memastikan koordinat integer agar tidak error pada getImageData
+        let sx1 = Math.round(state.x1), sy1 = Math.round(state.y1);
+        let sx2 = Math.round(state.x2), sy2 = Math.round(state.y2);
+        let sw = Math.round(state.w), sh = Math.round(state.h);
+        
+        // Pastikan tidak mengambil data di luar batas gambar
+        if (sx1 < 0 || sy1 < 0 || sx1+sw > img.width || sy1+sh > img.height ||
+        sx2 < 0 || sy2 < 0 || sx2+sw > img.width || sy2+sh > img.height) {
+            accuracyScoreSpan.innerText = "Out of bounds";
+            return;
+        }
+        
+        const d1 = tCtx.getImageData(sx1, sy1, sw, sh).data;
+        const d2 = tCtx.getImageData(sx2, sy2, sw, sh).data;
+        
+        let totalDiff = 0;
+        // Hitung total perbedaan RGB untuk setiap pixel
+        for (let i = 0; i < d1.length; i += 4) {
+            totalDiff += Math.abs(d1[i] - d2[i]) +      // R
+            Math.abs(d1[i+1] - d2[i+1]) +  // G
+            Math.abs(d1[i+2] - d2[i+2]);   // B
+        }
+        
+        const numPixels = sw * sh;
+        let score = 0;
+        
+        if (numPixels > 0) {
+            // Hitung rata-rata perbedaan per channel warna (R, G, B)
+            // Hasilnya antara 0.00 sampai sekitar 255.00
+            score = totalDiff / (numPixels * 3);
+        }
+        
+        // Update UI Skor
+        const scoreFixed = score.toFixed(2);
+        accuracyScoreSpan.innerText = scoreFixed;
+        
+        // Ubah warna berdasarkan seberapa dekat skornya ke 0
+        if (score < 2.0) {
+            // Sangat Presisi (Hijau)
+            accuracyScoreSpan.style.color = "var(--score-good)";
+        } else if (score < 15.0) {
+            // Cukup Dekat (Biru)
+            accuracyScoreSpan.style.color = "var(--score-ok)";
+        } else {
+            // Masih Jauh (Oranye)
+            accuracyScoreSpan.style.color = "var(--score-bad)";
+        }
+    }
+    
+    function processDiff() {
+        if (!img.src) return;
+        
+        resCanvas.width = state.w; 
+        resCanvas.height = state.h;
+        const ctx = resCanvas.getContext('2d');
+        
+        const temp = document.createElement('canvas');
+        temp.width = img.width; temp.height = img.height;
+        const tCtx = temp.getContext('2d');
+        tCtx.drawImage(img, 0, 0);
+        
+        // Gunakan Math.round untuk keamanan koordinat
+        const d1 = tCtx.getImageData(Math.round(state.x1), Math.round(state.y1), Math.round(state.w), Math.round(state.h)).data;
+        const d2 = tCtx.getImageData(Math.round(state.x2), Math.round(state.y2), Math.round(state.w), Math.round(state.h)).data;
+        const out = ctx.createImageData(state.w, state.h);
+        
+        for (let i = 0; i < d1.length; i += 4) {
+            const diff = Math.abs(d1[i]-d2[i]) + Math.abs(d1[i+1]-d2[i+1]) + Math.abs(d1[i+2]-d2[i+2]);
+            if (diff > 45) {
+                out.data[i]=255; out.data[i+1]=0; out.data[i+2]=0; out.data[i+3]=255;
+            } else {
+                out.data[i]=d1[i]; out.data[i+1]=d1[i+1]; out.data[i+2]=d1[i+2]; out.data[i+3]=255;
+            }
+        }
+        ctx.putImageData(out, 0, 0);
+    }
+*/
+const img = document.getElementById('main-img');
+    const box1 = document.getElementById('box-1');
+    const box2 = document.getElementById('box-2');
+    const resizer = document.getElementById('resizer');
+    const prevCanvas = document.getElementById('prev-canvas');
+    const resCanvas = document.getElementById('res-canvas');
+    const accuracyScoreSpan = document.getElementById('accuracy-score');
+
+    // Canvas tersembunyi untuk menyimpan data gambar asli agar pembacaan pixel super cepat
+    let sourceCanvas = document.createElement('canvas');
+    let sourceCtx = null;
+
+    let state = {
+        x1: 20, y1: 20, w: 200, h: 200,
+        x2: 230, y2: 20,
+        isDragging: false, isResizing: false, activeBox: null,
+        startX: 0, startY: 0
+    };
+
+    // --- 1. UPLOAD IMAGE & CACHE DATA ---
+    document.getElementById('upload-input').onchange = (e) => {
+        if(e.target.files && e.target.files[0]){
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                img.src = ev.target.result;
+                img.onload = () => {
+                    // 1. Siapkan Canvas Sumber (Cache)
+                    sourceCanvas.width = img.width;
+                    sourceCanvas.height = img.height;
+                    sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+                    sourceCtx.drawImage(img, 0, 0);
+
+                    // 2. Reset Posisi Box
+                    state.w = Math.min(200, Math.floor(img.width/3));
+                    state.h = Math.min(200, Math.floor(img.height/3));
+                    state.x1 = 20; state.y1 = 20;
+                    state.x2 = state.x1 + state.w + 20; state.y2 = 20;
+                    
+                    box1.style.display = 'block';
+                    box2.style.display = 'block';
+                    
+                    updateVisuals();
+                };
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    // --- 2. LOGIC SNAP & NUDGE ---
+    function syncBox(mode) {
+        if (mode === 'Y') { 
+            state.y2 = state.y1;
+            state.x2 = state.x1 + state.w; // Reset ke posisi menempel di kanan
+        } else if (mode === 'X') { 
+            state.x2 = state.x1;
+            state.y2 = state.y1 + state.h; // Reset ke posisi menempel di bawah
+        }
+        updateVisuals();
+    }
+
+    function nudge(dx, dy) {
+        state.x2 += dx; state.y2 += dy;
+        // Menggunakan requestAnimationFrame agar UI update lebih mulus
+        requestAnimationFrame(updateVisuals);
+    }
+
+    // --- 3. INPUT HANDLING ---
     function getClientPos(e) {
         if (e.touches && e.touches.length > 0) {
             return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -240,15 +461,10 @@
         return { x: e.clientX, y: e.clientY };
     }
 
-    // A. Handle START (MouseDown / TouchStart)
     function handleStart(e) {
         const target = e.target;
-        
-        // Cek apakah yang disentuh adalah elemen interaktif kita
         if (target === resizer || target === box1 || target === box2) {
-            // Mencegah scroll layar saat menyentuh box
             if(e.type === 'touchstart') e.preventDefault(); 
-            
             const pos = getClientPos(e);
             state.startX = pos.x;
             state.startY = pos.y;
@@ -262,11 +478,8 @@
         }
     }
 
-    // B. Handle MOVE (MouseMove / TouchMove)
     function handleMove(e) {
         if (!state.isDragging && !state.isResizing) return;
-
-        // Mencegah scroll layar saat sedang drag/resize
         if(e.type === 'touchmove') e.preventDefault(); 
 
         const pos = getClientPos(e);
@@ -274,7 +487,6 @@
         const dy = pos.y - state.startY;
 
         if (state.isResizing) {
-            // Minimal ukuran 20px agar tidak hilang
             state.w = Math.max(20, state.w + dx);
             state.h = Math.max(20, state.h + dy);
         } else if (state.isDragging) {
@@ -284,37 +496,30 @@
                 state.x2 += dx; state.y2 += dy;
             }
         }
-
-        // Update posisi awal untuk frame selanjutnya
         state.startX = pos.x;
         state.startY = pos.y;
         
-        updateVisuals();
+        requestAnimationFrame(updateVisuals);
     }
 
-    // C. Handle END (MouseUp / TouchEnd)
     function handleEnd() {
         state.isDragging = false;
         state.isResizing = false;
         state.activeBox = null;
     }
 
-    // --- 4. EVENT LISTENERS ---
-    
-    // Mouse Events
+    // Event Listeners
     window.addEventListener('mousedown', handleStart);
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
-
-    // Touch Events (Passive: false penting agar preventDefault bekerja)
     window.addEventListener('touchstart', handleStart, { passive: false });
     window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('touchend', handleEnd);
 
 
-    // --- 5. RENDER LOGIC ---
+    // --- 4. RENDER LOGIC (OPTIMIZED) ---
     function updateVisuals() {
-        // Terapkan state ke DOM
+        // Update DOM
         box1.style.width = state.w + 'px'; 
         box1.style.height = state.h + 'px';
         box1.style.left = state.x1 + 'px'; 
@@ -329,62 +534,95 @@
     }
 
     function drawPreview() {
-        if (!img.src) return;
-        
-        // Pastikan ukuran canvas sesuai box
-        prevCanvas.width = state.w; 
-        prevCanvas.height = state.h;
-        
+        if (!img.src || !sourceCtx) return;
+
+        // Pembulatan koordinat agar pixel perfect dan valid
+        const rx1 = Math.round(state.x1);
+        const ry1 = Math.round(state.y1);
+        const rx2 = Math.round(state.x2);
+        const ry2 = Math.round(state.y2);
+        const rw = Math.round(state.w);
+        const rh = Math.round(state.h);
+
+        // A. Render Visual Overlay (Canvas Kecil)
+        prevCanvas.width = rw; 
+        prevCanvas.height = rh;
         const ctx = prevCanvas.getContext('2d');
         
-        // Gambar Box 1 (Solid)
-        ctx.globalAlpha = 1.0;
-        ctx.drawImage(img, state.x1, state.y1, state.w, state.h, 0, 0, state.w, state.h);
+        // Ambil data langsung dari Cache (Sangat Cepat)
+        // Gunakan clamp agar tidak error jika keluar batas gambar
+        try {
+            // Draw Box 1
+            ctx.globalAlpha = 1.0;
+            ctx.drawImage(sourceCanvas, rx1, ry1, rw, rh, 0, 0, rw, rh);
+            
+            // Draw Box 2 (Ghosting)
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(sourceCanvas, rx2, ry2, rw, rh, 0, 0, rw, rh);
         
-        // Gambar Box 2 (Transparan 50%)
-        ctx.globalAlpha = 0.5;
-        ctx.drawImage(img, state.x2, state.y2, state.w, state.h, 0, 0, state.w, state.h);
+            // B. Hitung Skor (Langsung dari sourceCtx)
+            const d1 = sourceCtx.getImageData(clamp(rx1, img.width), clamp(ry1, img.height), rw, rh).data;
+            const d2 = sourceCtx.getImageData(clamp(rx2, img.width), clamp(ry2, img.height), rw, rh).data;
+
+            let totalDiff = 0;
+            // Sampling optimasi: hitung setiap pixel ke-4 untuk performa super tinggi jika area besar
+            // Tapi untuk presisi kita hitung semua (loop step 4 untuk RGBA)
+            for (let i = 0; i < d1.length; i += 4) {
+                totalDiff += Math.abs(d1[i] - d2[i]) +      // R
+                             Math.abs(d1[i+1] - d2[i+1]) +  // G
+                             Math.abs(d1[i+2] - d2[i+2]);   // B
+            }
+
+            const numPixels = rw * rh;
+            const score = numPixels > 0 ? totalDiff / (numPixels * 3) : 999;
+            
+            // Update Teks
+            accuracyScoreSpan.innerText = score.toFixed(3); // 3 digit desimal
+            
+            // Update Warna
+            if (score < 1.0) accuracyScoreSpan.style.color = "var(--score-good)";
+            else if (score < 10.0) accuracyScoreSpan.style.color = "var(--score-ok)";
+            else accuracyScoreSpan.style.color = "var(--score-bad)";
+
+        } catch (e) {
+            accuracyScoreSpan.innerText = "Out of Bounds";
+            accuracyScoreSpan.style.color = "red";
+        }
+    }
+
+    // Helper untuk mencegah error getImageData di luar batas
+    function clamp(val, max) {
+        if (val < 0) return 0;
+        if (val >= max) return max - 1;
+        return val;
     }
 
     function processDiff() {
-        if (!img.src) return;
+        if (!sourceCtx) return;
 
-        resCanvas.width = state.w; 
-        resCanvas.height = state.h;
+        // Gunakan ukuran integer
+        const w = Math.round(state.w);
+        const h = Math.round(state.h);
+
+        resCanvas.width = w; 
+        resCanvas.height = h;
         const ctx = resCanvas.getContext('2d');
         
-        // Canvas sementara untuk mengambil data pixel mentah
-        const temp = document.createElement('canvas');
-        temp.width = img.width; 
-        temp.height = img.height;
-        const tCtx = temp.getContext('2d');
-        tCtx.drawImage(img, 0, 0);
+        const d1 = sourceCtx.getImageData(Math.round(state.x1), Math.round(state.y1), w, h).data;
+        const d2 = sourceCtx.getImageData(Math.round(state.x2), Math.round(state.y2), w, h).data;
+        const out = ctx.createImageData(w, h);
 
-        // Ambil pixel data
-        const d1 = tCtx.getImageData(state.x1, state.y1, state.w, state.h).data;
-        const d2 = tCtx.getImageData(state.x2, state.y2, state.w, state.h).data;
-        const out = ctx.createImageData(state.w, state.h);
-
-        // Loop Pixel Comparison
         for (let i = 0; i < d1.length; i += 4) {
             const diff = Math.abs(d1[i]-d2[i]) + Math.abs(d1[i+1]-d2[i+1]) + Math.abs(d1[i+2]-d2[i+2]);
-            if (diff > 45) { // Threshold sensitivitas
-                out.data[i]=255;   // R
-                out.data[i+1]=0;   // G
-                out.data[i+2]=0;   // B
-                out.data[i+3]=255; // Alpha
+            if (diff > 45) {
+                out.data[i]=255; out.data[i+1]=0; out.data[i+2]=0; out.data[i+3]=255;
             } else {
-                // Tampilkan gambar asli agak gelap jika sama
-                out.data[i]=d1[i]; 
-                out.data[i+1]=d1[i+1]; 
-                out.data[i+2]=d1[i+2]; 
-                out.data[i+3]=255;
+                out.data[i]=d1[i]; out.data[i+1]=d1[i+1]; out.data[i+2]=d1[i+2]; out.data[i+3]=255;
             }
         }
         ctx.putImageData(out, 0, 0);
     }
-    </script>
+</script>
+
 </body>
 </html>
-
-
