@@ -4,86 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Video Pattern Recorder - Margin Precision</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         :root {
             --primary: #00bcd4;
             --bg: #f5f6fa;
             --text: #2f3640;
             --danger: #e74c3c;
-            --success: #2ecc71; }
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            margin: 0; 
-            padding: 10px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        .main-container { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-            max-width: 600px; 
-            width: 100%; 
-            box-sizing: border-box; 
-        }
-        .nav-header {
-            text-align: center;
-            margin-top: 200px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .nav-header h2 {
-            margin: 5px 0 5px 0;
-            color: #2c3e50;
-            font-size: 1.2rem;
-        }
-        .nav-header a {
-            text-decoration: none;
-            color: #999;
-            font-size: 0.9rem;
-            margin: 0 5px;
-            transition: color 0.2s;
-        }
-        .nav-header a:hover {
-            color: var(--primary);
-        }
-        .nav-header .active {
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        .preview-wrapper { 
-            position: relative; 
-            width: 100%; 
-            background: #000; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            margin-bottom: 15px; 
-            line-height: 0; 
-            border: 2px solid #333;
+            --success: #2ecc71;
         }
         #videoPlayer {
             width: 100%;
             display: block;
-        }
-        #overlayCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .control-panel {
-            background: #fdfdfd;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 10px;
-            margin-bottom: 15px;
         }
         .slider-section {
             margin-bottom: 15px;
@@ -102,43 +34,6 @@
             margin-bottom: 8px;
             display: block;
         }
-        .slider-row {
-            margin-bottom: 12px;
-        }
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .slider-header label {
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #636e72;
-        }
-        .val-badge {
-            background: #eee;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-family: monospace;
-        }
-        input[type=range] {
-            width: 100%;
-            accent-color: var(--primary);
-            cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            appearance: none;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            --webkit-appearance: none;
-            appearance: none;
-            height: 80px;
-            width: 80px;
-            background: var(--primary);
-            border-radius: 50%;
-        }
         .btn {
             width: 100%;
             padding: 12px;
@@ -149,7 +44,6 @@
             font-size: 1rem;
             color: white;
             transition: 0.2s;
-            margin-top: 5px;
         }
         .btn-start {
             background: var(--primary);
@@ -160,51 +54,18 @@
         }
         .btn-download {
             background: var(--success);
-            margin-top: 15px;
             display: none;
         }
         .results-grid {
-            display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            margin-top: 20px;
-            width: 100%;
         }
         .cell {
-            aspect-ratio: 1;
-            background: #ecf0f1;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
             font-size: 1.1rem;
-            color: #bdc3c7;
         }
         .cell.detected {
             background: white;
             border: 2px solid var(--danger);
             color: var(--danger);
-        }
-        #status {
-            text-align: center;
-            font-size: 0.9rem;
-            margin: 10px 0;
-            color: #7f8c8d;
-        }
-        #videoInput {
-            margin-bottom: 15px;
-            width: 100%;
-        }
-        input[type="file"]::file-selector-button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 10px;
-            font-weight: bold;
         }
     </style>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onOpenCvReady()"></script>
@@ -214,15 +75,15 @@
 <div class="main-container">
     <div class="nav-header">
         <h2>
+            <a href="index.html" class="active">Memory Pattern Recorder V3</a> || 
             <a href="flipimage.html">Same Image Flip</a> ||
-            <span class="active">Memory Pattern Recorder V3</span> || 
+            <a href="difimage.html">Image Different</a> || 
             <a href="sudokusolver.html">Sudoku Solver</a>
-            <a href="difimage.html">Image Different</a>
         </h2>
         <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Adjust margins until green boxes match cards</div>
     </div>
 
-    <input type="file" id="videoInput" accept="video/*">
+    <input type="file" id="fileInput" class="action-btn" accept="video/*">
     
     <div class="preview-wrapper">
         <video id="videoPlayer" muted playsinline></video>
@@ -256,29 +117,31 @@
                 <input type="range" id="endTime" step="0.1" value="0">
             </div>
         </div>
-        <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
-        <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
+        <div class="row">
+            <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
+            <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
+        </div>
     </div>
     <div class="slider-section">
         <span class="slider-title">Resolusi Layar Target (KeyMapper)</span>
-        <div style="display: flex; gap: 10px; margin-top: 5px;">
-            <div style="flex: 1;">
+        <div class="row">
+            <div>
                 <label style="font-size: 0.7rem; font-weight: bold; color: #666;">WIDTH</label>
-                <input type="number" id="screenWidth" value="1260" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="number" id="screenWidth" value="1260" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
             </div>
-            <div style="flex: 1;">
+            <div>
                 <label style="font-size: 0.7rem; font-weight: bold; color: #666;">HEIGHT</label>
-                <input type="number" id="screenHeight" value="2800" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="number" id="screenHeight" value="2800" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
             </div>
         </div>
         <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*JSON akan dikonversi otomatis dari basis 1260x2800 ke resolusi ini.</p>
-    </div>
-    <div class="slider-section">
-        <span class="slider-title">Custom Tap Coordinates (X, Y per baris)</span>
-        <textarea id="customCoords" rows="8" style="width: 100%; font-family: monospace; font-size: 0.75rem; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="170,845
-    480,845
-    ..."></textarea>
-        <p style="font-size: 0.65rem; color: #e74c3c; margin-top: 5px;">*Masukkan 20 baris koordinat sesuai urutan grid (Kiri ke Kanan, Atas ke Bawah).</p>
+        <div>
+            <span class="slider-title">Custom Tap Coordinates (X, Y per baris)</span>
+            <textarea id="customCoords" rows="8" style="font-family: monospace; font-size: 0.75rem; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="170,845
+        480,845
+        ..."></textarea>
+            <p style="font-size: 0.65rem; color: #e74c3c; margin-top: 5px;">*Masukkan 20 baris koordinat sesuai urutan grid (Kiri ke Kanan, Atas ke Bawah).</p>
+        </div>
     </div>
 
     <div id="status">Waiting for OpenCV...</div>
@@ -408,7 +271,7 @@ function loadSliderSettings() {
 });
 
 //Load Video
-document.getElementById('videoInput').addEventListener('change', (e) => {
+document.getElementById('fileInput').addEventListener('change', (e) => {
   if (e.target.files[0]) {
     videoPlayer.src = URL.createObjectURL(e.target.files[0]);
     videoPlayer.onloadedmetadata = () => {

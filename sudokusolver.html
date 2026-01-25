@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Sudoku Precision Scanner</title>
     <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <link rel="stylesheet" href="style.css">
     <style>
         :root { --primary: #00bcd4; --bg: #f0f2f5; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
@@ -43,14 +44,15 @@
     </style>
 </head>
 <body>
-
-    <h1>Sudoku Smart Scanner || 
-        <a href="index.html">Memory Pattern Recorder V3</a> || 
-        <a href="flipimage.html">Same Image Flip</a>
-            <a href="difimage.html.html">Image Different</a>
-        </h2>
-    </h1>
-
+        <div class="nav-header">
+            <h2>
+                <a href="index.html" >Memory Pattern Recorder V3</a> || 
+                <a href="flipimage.html">Same Image Flip</a> ||
+                <a href="difimage.html">Image Different</a> || 
+                <a href="sudokusolver.html class="active"">Sudoku Solver</a>
+            </h2>
+        </div>
+  
     <div class="main-layout">
         <div class="scanner-area">
             <div class="preview-container">
