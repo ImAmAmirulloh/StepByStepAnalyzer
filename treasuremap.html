@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Treasure Map Maker</title>
+    <link rel="stylesheet" href="style.css"> 
+    <style>
+        /* Gaya Tambahan Khusus Halaman Ini */
+        :root {
+            --primary: #00bcd4;
+            --bg: #f5f6fa;
+            --text: #2f3640;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --start-color: #3498db; /* Biru untuk Start */
+        }
+        
+        /* Layout Grid Utama 10x10 */
+        .map-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
+            background: #ddd;
+            border: 2px solid #333;
+            width: 100%;
+            max-width: 350px; /* Agar tidak terlalu besar di HP */
+            aspect-ratio: 1;
+        }
+        .map-cell {
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            user-select: none;
+            transition: background 0.1s;
+        }
+        .map-cell:hover { background: #f0f0f0; }
+        
+        /* Tipe-tipe Cell */
+        .cell-start { background: var(--start-color) !important; color: white; }
+        .cell-path { background: var(--text) !important; }
+        .cell-treasure { background: var(--danger) !important; color: white; }
+
+        /* Toolbar Alat Gambar */
+        .toolbar {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 15px;
+            background: #eee;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .tool-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #555;
+        }
+        .tool-btn.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #e0f7fa;
+        }
+
+        /* Input Nama */
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        /* List Hasil Simpanan */
+        .saved-list {
+            margin-top: 30px;
+            border-top: 2px dashed #ddd;
+            padding-top: 20px;
+            width: 100%;
+        }
+        .saved-item {
+            background: #fdfdfd;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Thumbnail Kecil */
+        .mini-map {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 0;
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ccc;
+            background: #fff;
+        }
+        .mini-cell { width: 100%; height: 100%; }
+        
+        .item-info { flex: 1; }
+        .item-name { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; display: block;}
+        .item-date { font-size: 0.7rem; color: #999; }
+        
+        .item-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.7rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        .btn-load { background: var(--primary); }
+        .btn-del { background: var(--danger); }
+
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="nav-header">
+        <h2>
+            <a href="flipimage.html">Flip Image</a> || 
+            <a href="index.html">Video Pattern</a> || 
+             <a href="difimage.html">Image Different</a> || 
+             <a href="sudokusolver.html">Sudoku Solver</a> || 
+            <a href="treasuremap.html" class="active">Treasure Map</a>
+        </h2>
+        <div style="font-size: 0.75rem; color: #999; margin-top:5px;">
+            Buat peta pixel 10x10 dan simpan lokasinya.
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <button class="tool-btn active" onclick="setTool(1, this)">🟢 Start</button>
+        <button class="tool-btn" onclick="setTool(2, this)">⚫ Jalan</button>
+        <button class="tool-btn" onclick="setTool(3, this)">❌ Harta</button>
+        <button class="tool-btn" onclick="setTool(0, this)">⚪ Hapus</button>
+    </div>
+
+    <div class="map-container">
+        <div id="gridBoard" class="map-grid">
+            </div>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="mapName" placeholder="Beri nama peta ini (Cth: Level 1-5)">
+    </div>
+    
+    <div class="row" style="display:flex; gap:10px;">
+        <button class="btn" style="background:#95a5a6" onclick="clearGrid()">Bersihkan</button>
+        <button class="btn btn-start" onclick="saveMap()">💾 SIMPAN PETA</button>
+    </div>
+
+    <div class="saved-list">
+        <h4 style="margin:0 0 15px 0; color:#555;">Daftar Peta Tersimpan</h4>
+        <div id="savedContainer">
+            <p style="text-align:center; color:#999; font-size:0.8rem;">Belum ada peta tersimpan.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- KONFIGURASI ---
+const GRID_SIZE = 100; // 10x10
+let currentMapData = new Array(GRID_SIZE).fill(0); 
+// 0: Kosong, 1: Start (Biru/Hijau), 2: Jalan (Hitam), 3: Harta (Merah X)
+
+let currentTool = 1; // Default tool: Start
+let editingId = null; // Jika sedang edit, simpan ID-nya
+
+// --- INISIALISASI ---
+const gridEl = document.getElementById('gridBoard');
+const nameEl = document.getElementById('mapName');
+const listEl = document.getElementById('savedContainer');
+
+function initGrid() {
+    gridEl.innerHTML = '';
+    for(let i=0; i<GRID_SIZE; i++) {
+        let cell = document.createElement('div');
+        cell.className = 'map-cell';
+        cell.dataset.index = i;
+        cell.onclick = () => handleCellClick(i);
+        // Tambahkan support drag/geser untuk menggambar cepat (opsional)
+        cell.onmouseenter = (e) => { if(e.buttons === 1) handleCellClick(i); }
+        gridEl.appendChild(cell);
+    }
+    renderGrid();
+    loadSavedList();
+}
+
+// --- LOGIKA GAMBAR ---
+function setTool(toolId, btn) {
+    currentTool = toolId;
+    // Update UI tombol aktif
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function handleCellClick(index) {
+    // Jika tool adalah Start (1) atau Harta (3), pastikan cuma ada 1 di grid (Opsional, tapi biasanya game harta karun start/end cuma satu)
+    // Di sini saya bebaskan user bisa taruh banyak, kecuali user mau logic lain.
+    
+    currentMapData[index] = currentTool;
+    renderGrid();
+}
+
+function renderGrid() {
+    const cells = gridEl.children;
+    for(let i=0; i<GRID_SIZE; i++) {
+        const val = currentMapData[i];
+        const c = cells[i];
+        
+        // Reset class
+        c.className = 'map-cell';
+        c.innerText = '';
+        
+        if(val === 1) {
+            c.classList.add('cell-start');
+            c.innerText = 'S';
+        } else if(val === 2) {
+            c.classList.add('cell-path');
+        } else if(val === 3) {
+            c.classList.add('cell-treasure');
+            c.innerText = 'X';
+        }
+    }
+}
+
+function clearGrid() {
+    if(confirm("Bersihkan area gambar?")) {
+        currentMapData.fill(0);
+        editingId = null;
+        nameEl.value = '';
+        renderGrid();
+    }
+}
+
+// --- LOGIKA PENYIMPANAN (LOCAL STORAGE) ---
+function getSavedMaps() {
+    const data = localStorage.getItem('myTreasureMaps');
+    return data ? JSON.parse(data) : [];
+}
+
+function saveMap() {
+    const name = nameEl.value.trim();
+    if(!name) return alert("Harap beri nama peta!");
+    
+    // Cek apakah grid kosong
+    if(currentMapData.every(v => v === 0)) return alert("Peta masih kosong!");
+
+    const maps = getSavedMaps();
+    const newEntry = {
+        id: editingId || Date.now(),
+        name: name,
+        data: [...currentMapData], // Copy array
+        date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString()
+    };
+
+    if(editingId) {
+        // Mode Edit: Update data lama
+        const idx = maps.findIndex(m => m.id === editingId);
+        if(idx !== -1) maps[idx] = newEntry;
+    } else {
+        // Mode Baru: Tambah ke atas
+        maps.unshift(newEntry);
+    }
+
+    localStorage.setItem('myTreasureMaps', JSON.stringify(maps));
+    
+    // Reset form setelah simpan
+    alert("Peta berhasil disimpan!");
+    currentMapData.fill(0);
+    nameEl.value = '';
+    editingId = null;
+    renderGrid();
+    loadSavedList();
+}
+
+function deleteMap(id) {
+    if(!confirm("Hapus peta ini?")) return;
+    let maps = getSavedMaps();
+    maps = maps.filter(m => m.id !== id);
+    localStorage.setItem('myTreasureMaps', JSON.stringify(maps));
+    loadSavedList();
+}
+
+function loadMapForEdit(id) {
+    const maps = getSavedMaps();
+    const target = maps.find(m => m.id === id);
+    if(target) {
+        currentMapData = [...target.data];
+        nameEl.value = target.name;
+        editingId = target.id;
+        renderGrid();
+        // Scroll ke atas
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// --- LOGIKA DAFTAR & THUMBNAIL ---
+function loadSavedList() {
+    const maps = getSavedMaps();
+    listEl.innerHTML = '';
+    
+    if(maps.length === 0) {
+        listEl.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8rem;">Belum ada peta tersimpan.</p>';
+        return;
+    }
+
+    maps.forEach(map => {
+        const item = document.createElement('div');
+        item.className = 'saved-item';
+        
+        // Buat Thumbnail HTML string
+        let thumbHTML = '<div class="mini-map">';
+        map.data.forEach(val => {
+            let color = '#eee'; // Kosong
+            if(val === 1) color = 'var(--start-color)'; // Start
+            if(val === 2) color = '#333'; // Jalan
+            if(val === 3) color = 'var(--danger)'; // Harta
+            thumbHTML += `<div class="mini-cell" style="background:${color}"></div>`;
+        });
+        thumbHTML += '</div>';
+
+        item.innerHTML = `
+            ${thumbHTML}
+            <div class="item-info">
+                <span class="item-name">${map.name}</span>
+                <span class="item-date">${map.date}</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn-small btn-load" onclick="loadMapForEdit(${map.id})">✏️ Edit</button>
+                <button class="btn-small btn-del" onclick="deleteMap(${map.id})">🗑️ Hapus</button>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
+}
+
+// Jalankan saat load
+window.onload = initGrid;
+
+</script>
+
+</body>
+</html>
