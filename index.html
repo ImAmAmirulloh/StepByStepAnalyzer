@@ -111,11 +111,15 @@
             <span class="slider-title">Pengaturan Waktu Video</span>
             <div class="slider-row">
                 <div class="slider-header"><span>MULAI (Start)</span><span id="vStart" class="val-badge">0.0s</span></div>
-                <input type="range" id="startTime" step="0.1" value="0">
+                <div class="slider-input-group">
+                    <button class="adj-btn" id="btnStartDec">-</button>
+                    <input type="range" id="startTime" step="0.01" value="0">
+                    <button class="adj-btn" id="btnStartInc">+</button>
+                </div>
             </div>
             <div class="slider-row">
                 <div class="slider-header"><span>SELESAI (End)</span><span id="vEnd" class="val-badge">0.0s</span></div>
-                <input type="range" id="endTime" step="0.1" value="0">
+                <input type="range" id="endTime" step="0.01" value="0">
             </div>
         </div>
         <div class="row">
@@ -179,6 +183,8 @@ const sBot = document.getElementById('marginBottom');
 const sSide = document.getElementById('marginSide');
 const sStart = document.getElementById('startTime');
 const sEnd = document.getElementById('endTime');
+const btnStartDec = document.getElementById('btnStartDec');
+const btnStartInc = document.getElementById('btnStartInc');
 
 // Your fixed coordinates as center points (kept as metadata)
 const FIXED_CENTERS = [
@@ -376,7 +382,33 @@ function drawOverlay() {
 
 let currentTime = 0;
 // Event Listeners Slider Waktu
-sStart.addEventListener('input', () => {
+function updateStartTime(val) {
+    let newVal = parseFloat(val);
+    const endVal = parseFloat(sEnd.value);
+    
+    // Limits check
+    if(newVal < 0) newVal = 0;
+    if(newVal > endVal) newVal = endVal;
+    if(videoPlayer.duration && newVal > videoPlayer.duration) newVal = videoPlayer.duration;
+
+    sStart.value = newVal;
+    document.getElementById("vStart").innerText = newVal.toFixed(1) + "s";
+    
+    // Move video frame
+    if(videoPlayer.duration) {
+        videoPlayer.currentTime = newVal;
+    }
+}
+sStart.addEventListener('input', (e) => {
+    updateStartTime(e.target.value);
+});
+btnStartDec.addEventListener('click', () => {
+    updateStartTime(parseFloat(sStart.value) - 0.02);
+});
+btnStartInc.addEventListener('click', () => {
+    updateStartTime(parseFloat(sStart.value) + 0.05);
+});
+/*sStart.addEventListener('input', () => {
     // Pastikan Start tidak melewati End
     if(parseFloat(sStart.value) > parseFloat(sEnd.value)) {
         sStart.value = sEnd.value;
@@ -387,7 +419,7 @@ sStart.addEventListener('input', () => {
     
     // Sinkronkan tampilan video agar nampak bergerak saat digeser
     videoPlayer.currentTime = val; 
-});
+});*/
 
 // Slider Waktu Selesai (End)
 sEnd.addEventListener('input', () => {
