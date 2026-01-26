@@ -402,10 +402,10 @@ sStart.addEventListener('input', (e) => {
     updateStartTime(e.target.value);
 });
 btnStartDec.addEventListener('click', () => {
-    updateStartTime(parseFloat(sStart.value) - 0.1);
+    updateStartTime(parseFloat(sStart.value) - 0.01);
 });
 btnStartInc.addEventListener('click', () => {
-    updateStartTime(parseFloat(sStart.value) + 0.1);
+    updateStartTime(parseFloat(sStart.value) + 0.05);
 });
 /*sStart.addEventListener('input', () => {
     // Pastikan Start tidak melewati End
