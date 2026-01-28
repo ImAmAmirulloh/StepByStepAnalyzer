@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video Pattern Recorder - Margin Precision</title>
+    <title>Video Pattern Recorder</title>
     <link rel="stylesheet" href="style.css">
     <style>
         :root {
@@ -75,7 +75,7 @@
 <div class="main-container">
     <div class="nav-header">
         <h2>
-            <a href="index.html" class="active">Memory Pattern Recorder V3</a> || 
+            <a href="index.html" class="active">Memory Pattern Recorder</a> || 
             <a href="flipimage.html">Same Image Flip</a> ||
             <a href="difimage.html">Image Different</a> || 
             <a href="sudokusolver.html">Sudoku Solver</a> || 
@@ -93,24 +93,24 @@
 
     <div class="control-panel">
         <div class="slider-section">
-            <span class="slider-title">Pengaturan Area (Margin)</span>
+            <span class="slider-title">Margin settings</span>
             <div class="slider-row">
-                <div class="slider-header"><label>TOP MARGIN (%)</label><span class="val-badge" id="v-t">23.0%</span></div>
+                <div class="slider-header"><label>TOP MARGIN</label><span class="val-badge" id="v-t">23.0%</span></div>
                 <input type="range" id="marginTop" min="0" max="100" step="0.1" value="23.0">
             </div>
             <div class="slider-row">
-                <div class="slider-header"><label>BOTTOM MARGIN (%)</label><span class="val-badge" id="v-b">15.0%</span></div>
+                <div class="slider-header"><label>BOTTOM MARGIN</label><span class="val-badge" id="v-b">15.0%</span></div>
                 <input type="range" id="marginBottom" min="0" max="100" step="0.1" value="15.0">
             </div>
             <div class="slider-row">
-                <div class="slider-header"><label>SIDE MARGIN (%)</label><span class="val-badge" id="v-s">5.0%</span></div>
+                <div class="slider-header"><label>SIDE MARGIN</label><span class="val-badge" id="v-s">5.0%</span></div>
                 <input type="range" id="marginSide" min="0" max="50" step="0.1" value="5.0">
             </div>
         </div>
         <div class="slider-section">
-            <span class="slider-title">Pengaturan Waktu Video</span>
+            <span class="slider-title">Video time settings</span>
             <div class="slider-row">
-                <div class="slider-header"><span>MULAI (Start)</span><span id="vStart" class="val-badge">0.0s</span></div>
+                <div class="slider-header"><span>Start</span><span id="vStart" class="val-badge">0.0s</span></div>
                 <div class="slider-input-group">
                     <button class="adj-btn" id="btnStartDec">-</button>
                     <input type="range" id="startTime" step="0.01" value="0">
@@ -118,7 +118,7 @@
                 </div>
             </div>
             <div class="slider-row">
-                <div class="slider-header"><span>SELESAI (End)</span><span id="vEnd" class="val-badge">0.0s</span></div>
+                <div class="slider-header"><span>End</span><span id="vEnd" class="val-badge">0.0s</span></div>
                 <input type="range" id="endTime" step="0.01" value="0">
             </div>
         </div>
@@ -128,7 +128,7 @@
         </div>
     </div>
     <div class="slider-section">
-        <span class="slider-title">Resolusi Layar Target (KeyMapper)</span>
+        <span class="slider-title">Screen Resolution</span>
         <div class="row">
             <div>
                 <label style="font-size: 0.7rem; font-weight: bold; color: #666;">WIDTH</label>
@@ -139,13 +139,13 @@
                 <input type="number" id="screenHeight" value="2800" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
             </div>
         </div>
-        <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*JSON akan dikonversi otomatis dari basis 1260x2800 ke resolusi ini.</p>
+        <p style="font-size: 0.65rem; color: #999; margin-top: 5px;">*JSON will be automatically converted from base 1260x2800 to this resolution.</p>
         <div>
-            <span class="slider-title">Custom Tap Coordinates (X, Y per baris)</span>
+            <span class="slider-title">Custom Tap Coordinates</span>
             <textarea id="customCoords" rows="8" style="font-family: monospace; font-size: 0.75rem; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="170,845
         480,845
         ..."></textarea>
-            <p style="font-size: 0.65rem; color: #e74c3c; margin-top: 5px;">*Masukkan 20 baris koordinat sesuai urutan grid (Kiri ke Kanan, Atas ke Bawah).</p>
+            <p style="font-size: 0.65rem; color: #e74c3c; margin-top: 5px;">*Enter 20 rows of coordinates in grid order (Left to Right, Top to Bottom).</p>
         </div>
     </div>
 
