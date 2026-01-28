@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Solver - Precision Mode</title>
+    <title>Flip Memory Solver</title>
     <link rel="stylesheet" href="style.css">
     <style>
         :root {
@@ -88,14 +88,14 @@
     <div class="main-container">
         <div class="nav-header">
             <h2>
-                <a href="index.html" >Memory Pattern Recorder V3</a> || 
+                <a href="index.html" >Memory Pattern Recorder</a> || 
                 <a href="flipimage.html" class="active">Same Image Flip</a> ||
                 <a href="difimage.html">Image Different</a> || 
                 <a href="sudokusolver.html">Sudoku Solver</a> || 
                 <a href="treasuremap.html">Treasure Map</a>
             </h2>
         </div>
-        <div id="status">Loading AI Engine...</div>
+        <div id="status">Loading Engine...</div>
 
         <input type="file" id="fileInput" class="action-btn" accept="image/*">
         <p>You don't need to refresh the browser, just upload the new file directly.</p>
@@ -126,9 +126,11 @@
                 <input type="range" id="sensSlider" min="5" max="50" step="1" value="45">
                 <p style="font-size: 0.65rem; color: #999; margin: 4px 0 0 0;">Increase if matches aren't found. Decrease if matches are wrong.</p>
             </div>
-            <button id="btnProcess" class="action-btn" disabled style="margin-top:10px;">🔍 Find Pairs</button>
+            <div class="row">
+                <button id="btnProcess" class="action-btn" disabled style="margin-top:10px;">🔍 Find Pairs</button>
+                <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:15px; display:none;">Download JSON</button>
+            </div>
         </div>
-        <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:15px; display:none;">Download JSON</button>
         <div id="resultsGrid" class="results-grid"></div>
         <div id="debugSection">
             <p style="font-size:0.65rem; font-weight:bold; color:#636e72;">AI VISION (Icons should be inside these boxes):</p>
