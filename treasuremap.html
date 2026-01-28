@@ -154,15 +154,15 @@
             <a href="treasuremap.html" class="active">Treasure Map</a>
         </h2>
         <div style="font-size: 0.75rem; color: #999; margin-top:5px;">
-            Buat peta pixel 10x10 dan simpan lokasinya.
+            Create a 10x10 pixel map and save its location.
         </div>
     </div>
 
     <div class="toolbar">
-        <button class="tool-btn active" onclick="setTool(1, this)">🟢 Start</button>
-        <button class="tool-btn" onclick="setTool(2, this)">⚫ Jalan</button>
-        <button class="tool-btn" onclick="setTool(3, this)">❌ Harta</button>
-        <button class="tool-btn" onclick="setTool(0, this)">⚪ Hapus</button>
+        <button class="tool-btn active" onclick="setTool(1, this)">🟢 Begin</button>
+        <button class="tool-btn" onclick="setTool(2, this)">⚫ Path</button>
+        <button class="tool-btn" onclick="setTool(3, this)">❌ Final</button>
+        <button class="tool-btn" onclick="setTool(0, this)">⚪ Delete</button>
     </div>
 
     <div class="map-container">
@@ -175,14 +175,14 @@
     </div>
     
     <div class="row" style="display:flex; gap:10px;">
-        <button class="btn" style="background:#95a5a6" onclick="clearGrid()">Bersihkan</button>
-        <button class="btn btn-start" onclick="saveMap()">💾 SIMPAN PETA</button>
+        <button class="btn" style="background:#95a5a6" onclick="clearGrid()">Clear</button>
+        <button class="btn btn-start" onclick="saveMap()">💾 Save</button>
     </div>
 
     <div class="saved-list">
-        <h4 style="margin:0 0 15px 0; color:#555;">Daftar Peta Tersimpan</h4>
+        <h4 style="margin:0 0 15px 0; color:#555;">Saved Maps List</h4>
         <div id="savedContainer">
-            <p style="text-align:center; color:#999; font-size:0.8rem;">Belum ada peta tersimpan.</p>
+            <p style="text-align:center; color:#999; font-size:0.8rem;">There are no saved maps yet.</p>
         </div>
     </div>
 </div>
