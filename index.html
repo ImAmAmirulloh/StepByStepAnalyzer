@@ -54,7 +54,6 @@
         }
         .btn-download {
             background: var(--success);
-            display: none;
         }
         .results-grid {
             grid-template-columns: repeat(4, 1fr);
@@ -84,7 +83,6 @@
         <div style="font-size: 0.75rem; color: #999; margin-top:5px;">Step 1: Adjust margins until green boxes match cards</div>
     </div>
 
-    <input type="file" id="fileInput" class="action-btn" accept="video/*">
     
     <div class="preview-wrapper">
         <video id="videoPlayer" muted playsinline></video>
@@ -123,8 +121,9 @@
             </div>
         </div>
         <div class="row">
-            <button id="processBtn" class="btn btn-start" disabled>▶ START SCANNING</button>
-            <button id="btnDownload" class="btn btn-download">💾 DOWNLOAD JSON</button>
+            <input type="file" id="fileInput" class="action-btn" accept="video/*" style="flex: 1 100%;">
+            <button id="processBtn" class="btn btn-start" disabled  style="flex: 1;">▶ START SCANNING</button>
+            <button id="btnDownload" class="btn btn-download"  style="flex: 1;">💾 DOWNLOAD JSON</button>
         </div>
     </div>
     <div class="slider-section">

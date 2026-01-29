@@ -41,11 +41,10 @@ body {
 .row {
  display: flex;
  gap: 10px;
- justify-content: space-between;
+ flex-wrap: wrap;
 }
 .nav-header {
  text-align: center;
- margin-top: 200px;
  border-bottom: 1px solid #eee;
  padding-bottom: 10px;
 }
