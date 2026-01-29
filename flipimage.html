@@ -97,9 +97,7 @@
         </div>
         <div id="status">Loading Engine...</div>
 
-        <input type="file" id="fileInput" class="action-btn" accept="image/*">
-        <p>You don't need to refresh the browser, just upload the new file directly.</p>
-
+        
         <div class="preview-wrapper">
             <img id="imgPreview" src="">
             <canvas id="overlayCanvas"></canvas>
@@ -127,6 +125,7 @@
                 <p style="font-size: 0.65rem; color: #999; margin: 4px 0 0 0;">Increase if matches aren't found. Decrease if matches are wrong.</p>
             </div>
             <div class="row">
+                <input type="file" id="fileInput" class="action-btn" accept="image/*">
                 <button id="btnProcess" class="action-btn" disabled style="margin-top:10px;">🔍 Find Pairs</button>
                 <button id="btnDownload" class="action-btn" style="background:#2ecc71; margin-top:15px; display:none;">Download JSON</button>
             </div>
