@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flip Memory Solver</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --primary: #00cec9;
+            --bg: #f5f6fa;
+            --text: #2f3640;
+        }
+        #imgPreview {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .loader-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 8px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #eee;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        .results-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .cell {
+            flex-direction: column;
+            font-size: 0.9rem;
+            border: 2px solid transparent;
+        }
+        .cell.matched {
+            background: #e3fdfd;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .cell span {
+            font-size: 0.6rem;
+        }
+        #debugSection {
+            margin-top: 15px;
+            width: 100%;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: none;
+        }
+        #debugCanvasContainer {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #222;
+            padding: 4px;
+            border-radius: 4px;
+        }
+    </style>
+    <script async src="https://docs.opencv.org/4.5.4/opencv.js" onload="onCvLoaded()"></script>
+</head>
+
+<body>
+
+    <div class="main-container">
+        <div class="nav-header">
+            <h2>
+                <a href="index.html" >Memory Pattern Recorder</a> || 
+                <a href="flipimage.html" class="active">Same Image Flip</a> ||
+                <a href="difimage.html">Image Different</a> || 
+                <a href="sudokusolver.html">Sudoku Solver</a> || 
+                <a href="treasuremap.html">Treasure Map</a>
+            </h2>
+        </div>
+        <div id="status">Loading Engine...</div>
+
+        
+        <div class="preview-wrapper">
+            <img id="imgPreview" src="">
+            <canvas id="overlayCanvas"></canvas>
+            <div id="loadingOverlay" class="loader-overlay">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="slider-row">
+                <div class="slider-header"><label>TOP MARGIN</label><span class="val-badge" id="v-t">12.6</span></div>
+                <input type="range" id="tSlider" min="0" max="100" step="0.1" value="12.6">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><label>BOTTOM MARGIN</label><span class="val-badge" id="v-b">12.6</span></div>
+                <input type="range" id="bSlider" min="0" max="100" step="0.1" value="12.6">
+            </div>
+            <div class="slider-row">
+                <div class="slider-header"><label>SIDE MARGIN</label><span class="val-badge" id="v-s">8.9</span></div>
+                <input type="range" id="sSlider" min="0" max="50" step="0.1" value="8.9">
+            </div>
+            <div class="slider-row" style="border-top: 1px solid #eee; padding-top: 10px;">
+                <div class="slider-header"><label>MATCH SENSITIVITY (LOOSENESS)</label><span class="val-badge" id="v-sens">45%</span></div>
+                <input type="range" id="sensSlider" min="5" max="50" step="1" value="45">
+                <p style="font-size: 0.65rem; color: #999; margin: 4px 0 0 0;">Increase if matches aren't found. Decrease if matches are wrong.</p>
+            </div>
+            <div class="row" style="align-items: center; margin-bottom: 15px; padding: 10px; background: #e3fdfd; border-radius: 8px; border: 1px solid var(--primary);">
+                <input type="checkbox" id="autoProcessCheckbox" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer; accent-color: var(--primary);">
+                <label for="autoProcessCheckbox" style="font-size: 0.9rem; font-weight: bold; color: #2c3e50; cursor: pointer; user-select: none;">Auto Process & Download</label>
+            </div>
+            <div class="row">
+                <input type="file" id="fileInput" class="action-btn" accept="image/*" style="flex: 1 100%;">
+                <button id="btnProcess" class="action-btn" disabled style="flex: 1;">🔍 Find Pairs</button>
+                <button id="btnDownload" class="action-btn" style="background:#2ecc71; flex: 1;">Download JSON</button>
+            </div>
+        </div>
+        <div id="resultsGrid" class="results-grid"></div>
+        <div id="debugSection">
+            <p style="font-size:0.65rem; font-weight:bold; color:#636e72;">AI VISION (Icons should be inside these boxes):</p>
+            <div id="debugCanvasContainer"></div>
+        </div>
+    </div>
+
+    <canvas id="procCanvas" style="display:none;"></canvas>
+
+    <script>
+        let cvReady = false;
+        let detectedSteps = [];
+        const img = document.getElementById('imgPreview');
+        const overlay = document.getElementById('overlayCanvas');
+        const ctx = overlay.getContext('2d');
+        const pCanvas = document.getElementById('procCanvas');
+        const btnProcess = document.getElementById('btnProcess');
+
+        function onCvLoaded() { cvReady = true; updateStatus("Ready. Upload screenshot."); initGridUI(); }
+        function updateStatus(msg) { document.getElementById('status').innerText = msg; }
+
+        function initGridUI() {
+            const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < 28; i++) {
+                let d = document.createElement('div');
+                d.className = 'cell'; d.id = `cell-${i}`; d.innerText = i + 1;
+                grid.appendChild(d);
+            }
+            // Add this inside your existing initialization code
+            window.addEventListener('load', () => {
+                loadSliderSettings();
+
+                // Add event listeners to all sliders to save automatically when moved
+                const sliders = document.querySelectorAll('input[type="range"]');
+                sliders.forEach(slider => {
+                    slider.addEventListener('change', saveSliderSettings);
+                    slider.addEventListener('input', saveSliderSettings);
+                });
+                // Add event listener for the new checkbox
+                const autoProcessCheckbox = document.getElementById('autoProcessCheckbox');
+                if (autoProcessCheckbox) {
+                    autoProcessCheckbox.addEventListener('change', saveSliderSettings);
+                }
+            });
+        }
+
+        document.getElementById('fileInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                overlay.width = img.naturalWidth;
+                overlay.height = img.naturalHeight;
+                drawGrid();
+                btnProcess.disabled = false;
+                
+                // If auto-process is checked, trigger it
+                if (document.getElementById('autoProcessCheckbox').checked) {
+                    btnProcess.onclick();
+                }
+            };
+        };
+
+        // Update labels and draw grid on slider move
+        document.querySelectorAll('input[type=range]').forEach(s => {
+            s.oninput = () => {
+                const valId = "v-" + s.id.substring(0, s.id.length - 6);
+                if (document.getElementById(valId)) {
+                    document.getElementById(valId).innerText = s.value + (s.id === 'sensSlider' ? "%" : "");
+                }
+                drawGrid();
+            };
+        });
+
+        function getZones() {
+            const w = overlay.width; const h = overlay.height;
+            const t = document.getElementById('tSlider').value / 100;
+            const b = document.getElementById('bSlider').value / 100;
+            const s = document.getElementById('sSlider').value / 100;
+
+            const startX = w * s, endX = w * (1 - s), startY = h * t, endY = h * (1 - b);
+            const cellW = (endX - startX) / 4, cellH = (endY - startY) / 7;
+            let zones = [];
+            for (let r = 0; r < 7; r++) {
+                for (let c = 0; c < 4; c++) {
+                    zones.push({
+                        x: startX + (c * cellW), y: startY + (r * cellH),
+                        w: cellW, h: cellH,
+                        cx: Math.floor(startX + (c * cellW) + cellW / 2),
+                        cy: Math.floor(startY + (r * cellH) + cellH / 2)
+                    });
+                }
+            }
+            return zones;
+        }
+
+        function drawGrid() {
+            if (!img.src) return;
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+            const zones = getZones();
+            ctx.strokeStyle = '#00cec9'; ctx.lineWidth = Math.max(1, overlay.width / 400);
+            zones.forEach(z => {
+                ctx.strokeRect(z.x, z.y, z.w, z.h);
+                ctx.fillStyle = 'red'; ctx.beginPath();
+                ctx.arc(z.cx, z.cy, ctx.lineWidth * 3, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+
+        btnProcess.onclick = async () => {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            btnProcess.disabled = true;
+            updateStatus("Running AI Analysis...");
+            await new Promise(r => setTimeout(r, 200));
+
+            try {
+                detectedSteps = []; initGridUI();
+                pCanvas.width = overlay.width; pCanvas.height = overlay.height;
+                const pCtx = pCanvas.getContext('2d');
+                pCtx.drawImage(img, 0, 0);
+
+                let src = cv.imread(pCanvas);
+                let gray = new cv.Mat();
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+                const zones = getZones();
+                let cellMats = [];
+                const debugContainer = document.getElementById('debugCanvasContainer');
+                debugContainer.innerHTML = '';
+                document.getElementById('debugSection').style.display = 'block';
+
+                zones.forEach((z, i) => {
+                    // Precise crop of 60% of the box
+                    let roiRect = new cv.Rect(z.x + z.w * 0.2, z.y + z.h * 0.2, z.w * 0.6, z.h * 0.6);
+                    let roi = gray.roi(roiRect);
+                    let resized = new cv.Mat();
+                    cv.resize(roi, resized, new cv.Size(40, 40));
+
+                    let canvas = document.createElement('canvas');
+                    canvas.width = 40; canvas.height = 40;
+                    debugContainer.appendChild(canvas);
+                    cv.imshow(canvas, resized);
+
+                    cellMats.push({ id: i, mat: resized, cx: z.cx, cy: z.cy });
+                    roi.delete();
+                });
+
+                const thresholdPercent = document.getElementById('sensSlider').value / 100;
+                let matched = new Set();
+                let pairCount = 1;
+
+                for (let i = 0; i < cellMats.length; i++) {
+                    if (matched.has(i)) continue;
+                    let bestMatch = -1;
+                    let bestScore = 1.0;
+
+                    for (let j = i + 1; j < cellMats.length; j++) {
+                        if (matched.has(j)) continue;
+
+                        let diff = new cv.Mat();
+                        cv.absdiff(cellMats[i].mat, cellMats[j].mat, diff);
+                        cv.threshold(diff, diff, 35, 255, cv.THRESH_BINARY);
+                        let score = cv.countNonZero(diff) / (40 * 40);
+                        diff.delete();
+
+                        if (score < thresholdPercent && score < bestScore) {
+                            bestScore = score; bestMatch = j;
+                        }
+                    }
+
+                    if (bestMatch !== -1) {
+                        matched.add(i); matched.add(bestMatch);
+                        updateCellUI(i, pairCount, "Tap 1");
+                        updateCellUI(bestMatch, pairCount, "Tap 2");
+                        detectedSteps.push({ step: pairCount * 2 - 1, x: cellMats[i].cx, y: cellMats[i].cy });
+                        detectedSteps.push({ step: pairCount * 2, x: cellMats[bestMatch].cx, y: cellMats[bestMatch].cy });
+                        pairCount++;
+                    }
+                }
+                src.delete(); gray.delete();
+                cellMats.forEach(m => m.mat.delete());
+                updateStatus(pairCount > 1 ? `Success! ${pairCount - 1} pairs found.` : "No matches. Adjust sliders or Sensitivity.");
+            } catch (e) { updateStatus("Error processing."); }
+            finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                btnProcess.disabled = false;
+                const hasResults = detectedSteps.length > 0;
+                document.getElementById('btnDownload').style.display = hasResults ? 'block' : 'none';
+                
+                // If auto-process is checked and we have results, trigger download
+                if (hasResults && document.getElementById('autoProcessCheckbox').checked) {
+                    document.getElementById('btnDownload').onclick();
+                }
+            }
+        };
+
+        function updateCellUI(idx, pairId, label) {
+            const cell = document.getElementById(`cell-${idx}`);
+            cell.classList.add('matched');
+            cell.innerHTML = `${pairId}<br><span>${label}</span>`;
+        }
+        // Function to save all slider values to localStorage
+        function saveSliderSettings() {
+            const settings = {};
+            const sliders = document.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                settings[slider.id] = slider.value;
+            });
+            settings.autoProcessCheckbox = document.getElementById('autoProcessCheckbox').checked;
+            localStorage.setItem('memoryAnalyzerSettings', JSON.stringify(settings));
+        }
+
+        // Function to load values from localStorage
+        function loadSliderSettings() {
+            const saved = localStorage.getItem('memoryAnalyzerSettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                // Load sliders
+                Object.keys(settings).forEach(id => {
+                    const slider = document.getElementById(id);
+                    if (slider && slider.type === 'range') {
+                        slider.value = settings[id];
+                        slider.dispatchEvent(new Event('input'));
+                    }
+                });
+                // Load checkbox state
+                const checkbox = document.getElementById('autoProcessCheckbox');
+                if (checkbox && typeof settings.autoProcessCheckbox === 'boolean') {
+                    checkbox.checked = settings.autoProcessCheckbox;
+                }
+            }
+        }
+
+        document.getElementById('btnDownload').onclick = () => {
+            // 1. Sort steps to ensure they appear as 1, 1b, 2, 2b... in the JSON
+            // Assumes s.step is a number (1, 1.5, 2, 2.5) or you can map 1b to 1.5 for sorting
+            detectedSteps.sort((a, b) => a.step - b.step);
+
+            const actionList = detectedSteps.map((s, i) => {
+                // Formatting the name: if it's a pair (e.g. step 1.5), call it '1b', else '1'
+                const stepName = Number.isInteger(s.step) ? `${s.step}` : `${Math.floor(s.step)}b`;
+
+                // Horizontal and Vertical Precision alignment logic
+                // This ensures Row 1 is always exactly 735, Row 2 is 976, etc.
+                // And Col 1 is 200, Col 2 is 490, etc.
+                const precisionX = s.x;
+                const precisionY = s.y;
+
+                return {
+                    "data": `${precisionX},${precisionY}`,
+                    "extras": [
+                        {
+                            "data": stepName,
+                            "id": "extra_coordinate_description"
+                        },
+                        {
+                            "data": 120,//(i % 2 !== 0 ? "950" : "350"), // Pair timing: fast tap, long wait
+                            "id": "extra_delay_before_next_action"
+                        }
+                    ],
+                    "flags": 0,
+                    "type": "TAP_COORDINATE",
+                    "uid": crypto.randomUUID()
+                };
+            });
+
+            // 2. The exact early JSON structure for compatibility
+            const keymap = {
+                "app_version": 63,
+                "keymap_db_version": 13,
+                "fingerprint_map_list": [
+                    { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 0, "enabled": true },
+                    { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 1, "enabled": true },
+                    { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 2, "enabled": true },
+                    { "action_list": [], "constraints": [], "constraint_mode": 1, "extras": [], "flags": 0, "id": 3, "enabled": true }
+                ],
+                "keymap_list": [{
+                    "actionList": actionList,
+                    "constraintList": [],
+                    "constraintMode": 1,
+                    "flags": 0,
+                    "id": 27,
+                    "isEnabled": true,
+                    "trigger": {
+                        "extras": [],
+                        "flags": 1,
+                        "keys": [{
+                            "clickType": 0, // Double Click/Press
+                            "deviceId": "io.github.sds100.keymapper.THIS_DEVICE",
+                            "flags": 0,
+                            "keyCode": 24, // Volume Up
+                            "uid": crypto.randomUUID()
+                        }],
+                        "mode": 2
+                    },
+                    "uid": "f27ac54c-b236-43d0-b34b-81aac1a8634b"
+                }]
+            };
+
+            const blob = new Blob([JSON.stringify(keymap, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '');
+            a.download = `Memory_4x7_${timestamp}.json`;
+            // a.download = 'Memory_4x7_Precision.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        // --- AUTOMATIC DOWNLOAD PERMISSION HELPER ---
+        // Modern browsers require a user gesture (like a click) to download.
+        // Since our btnDownload.onclick is a user gesture, it should work.
+        // But we add this check to ensure the URL is clean.
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+
+            // Append to body to ensure it works on all mobile browsers
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+    </script>
+</body>
+
+</html>
