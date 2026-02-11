@@ -54,7 +54,7 @@
             </h2>
         </div>
   
-    <div class="main-layout">
+    <div class="main-container">
         <div class="scanner-area">
             <div class="preview-container">
                 <canvas id="imageCanvas"></canvas>
@@ -82,8 +82,8 @@
             <div class="sudoku-board">
                 <div id="grid" class="grid"></div>
             </div>
-            <div class="controls">
-                <input type="file" id="imgInput" accept="image/*" style="display:none">
+            <div class="control-panel">
+                <input type="file" id="fileInput" class="action-btn" accept="image/*" style="display:none">
                 <button class="btn-up" onclick="document.getElementById('imgInput').click()">📸 UPLOAD IMAGE</button>
                 <button class="btn-solve" onclick="solveGame()">⚡ SOLVE</button>
                 <button class="btn-reset" onclick="resetEverything()">🔄 RESET ALL</button>
